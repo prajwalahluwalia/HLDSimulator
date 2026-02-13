@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHIELD — System Design Sandbox</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>SHIELD</h1>
+      <p>System's High-level Interactive Engine for Learning &amp; Design</p>
+    </div>
+    <div class="header-actions">
+      <span class="badge">MVP Sandbox</span>
+    </div>
+  </header>
+  <main class="layout" id="layout">
+    <aside class="panel" id="left-panel">
+      <section>
+        <h2>Components</h2>
+        <div class="palette">
+          <div class="palette-item" draggable="true" data-type="User" data-label="User">
+            <span class="icon">👤</span>
+          </div>
+          <div class="palette-item" draggable="true" data-type="LoadBalancer" data-label="Load Balancer">
+            <span class="icon">🧭</span>
+          </div>
+          <div class="palette-item" draggable="true" data-type="Server" data-label="Server">
+            <span class="icon">🖥️</span>
+          </div>
+          <div class="palette-item" draggable="true" data-type="Database" data-label="Database">
+            <span class="icon">🗄️</span>
+          </div>
+          <div class="palette-item" draggable="true" data-type="Cache" data-label="Cache">
+            <span class="icon">🧊</span>
+          </div>
+          <div class="palette-item" draggable="true" data-type="Queue" data-label="Message Queue">
+            <span class="icon">📨</span>
+          </div>
+        </div>
+        <p class="helper-text">Drag components onto the canvas. You can add multiple servers and databases.</p>
+      </section>
+
+      <section>
+        <h2>Inspector</h2>
+        <div id="inspector" class="inspector">
+          <p>Select a node to edit its parameters.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Actions</h2>
+        <button id="toggle-left-panel" class="button ghost">Toggle panel</button>
+        <button id="toggle-connect" class="button">Connector mode: Off</button>
+        <p class="helper-text">Tip: hold Shift and drag from one node to another to connect.</p>
+        <button id="simulate" class="button primary">Simulate</button>
+        <button id="reset" class="button ghost">Reset canvas</button>
+      </section>
+    </aside>
+
+    <section class="canvas-wrapper">
+      <div id="canvas" class="canvas">
+        <svg id="connections" class="connections"></svg>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <section>
+        <h2>Simulation Output</h2>
+        <div id="output" class="output">
+          <p>Run a simulation to see results.</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

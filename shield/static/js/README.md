@@ -1,0 +1,1 @@
+This directory contains the lightweight client-side logic for SHIELD.
