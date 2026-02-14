@@ -90,6 +90,12 @@ body {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-width: none;
+}
+
+#right-panel .output::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 #right-panel .result-block {
@@ -207,6 +213,12 @@ body {
   padding-right: 0.25rem;
   flex: 1;
   height: 180px;
+  scrollbar-width: none;
+}
+
+#left-panel .section-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .action-footer {
@@ -250,15 +262,12 @@ body {
   padding-right: 0.25rem;
   padding-bottom: 0.35rem;
   height: 100%;
+  scrollbar-width: none;
 }
 
 .palette::-webkit-scrollbar {
-  width: 6px;
-}
-
-.palette::-webkit-scrollbar-thumb {
-  background: #cbd5f5;
-  border-radius: 999px;
+  width: 0;
+  height: 0;
 }
 
 .canvas-reset {
@@ -457,8 +466,8 @@ body.connect-mode .connections {
 }
 
 .connection-path:hover {
-  stroke-width: 3;
-  filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3));
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.25));
 }
 
 .connection-path.selected {
@@ -494,9 +503,61 @@ body.connect-mode .connections {
   justify-content: center;
   text-align: center;
   resize: both;
-  overflow: auto;
-  min-width: 70px;
+  overflow: hidden;
+  min-width: 80px;
   min-height: 40px;
+}
+
+.node-ports {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.node-port {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  background: #1d4ed8;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+  opacity: 0;
+  pointer-events: auto;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  cursor: crosshair;
+  transform: translate(-50%, -50%);
+}
+
+.node:hover .node-port,
+.node.selected .node-port {
+  opacity: 1;
+}
+
+
+.node-port:hover {
+  transform: scale(1.15);
+}
+
+.node-port-top {
+  top: 0;
+  left: 50%;
+}
+
+.node-port-right {
+  left: 100%;
+  top: 50%;
+}
+
+.node-port-bottom {
+  top: 100%;
+  left: 50%;
+}
+
+.node-port-left {
+  left: 0;
+  top: 50%;
 }
 
 .node-label {
@@ -506,15 +567,15 @@ body.connect-mode .connections {
 
 .node-close {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.6);
   background: #ffffff;
   color: #0f172a;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -522,6 +583,7 @@ body.connect-mode .connections {
   z-index: 2;
   opacity: 0;
   transition: all 0.15s ease;
+  transform: translate(50%, -50%);
 }
 
 .node:hover .node-close {
@@ -543,6 +605,11 @@ body.connect-mode .connections {
 .node.selected {
   outline: 2px solid #0f172a;
   outline-offset: 2px;
+}
+
+.node.bottleneck {
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25), 0 10px 18px rgba(31, 42, 68, 0.18);
 }
 
 .node.connect-source {

@@ -84,8 +84,19 @@ def simulate(
         node_rps = incoming_rps_map.get(node_id, 0.0)
         targets = adjacency.get(node_id, [])
         if targets:
-            share = node_rps / len(targets) if node_rps > 0 else 0.0
+            capacities = []
             for target in targets:
+                config = node_map.get(target, {}).get("config", {}) if node_map.get(target) else {}
+                capacity = float(config.get("capacity", 0))
+                capacities.append(max(capacity, 0.0))
+            total_capacity = sum(capacities)
+            for target, capacity in zip(targets, capacities):
+                if node_rps <= 0:
+                    share = 0.0
+                elif total_capacity > 0:
+                    share = node_rps * (capacity / total_capacity)
+                else:
+                    share = node_rps / len(targets)
                 incoming_rps_map[target] = incoming_rps_map.get(target, 0.0) + share
                 levels[target] = max(levels.get(target, 0), levels.get(node_id, 0) + 1)
 
@@ -96,6 +107,8 @@ def simulate(
     throughput_candidates: List[float] = []
     max_utilization = -1.0
     bottleneck_component = ""
+    bottleneck_components: List[str] = []
+    bottleneck_component_ids: List[str] = []
     max_error_rate = 0.0
 
     level_latencies: Dict[int, List[Tuple[float, float]]] = defaultdict(list)
@@ -135,11 +148,18 @@ def simulate(
         if utilization > max_utilization:
             max_utilization = utilization
             bottleneck_component = component_type
+            bottleneck_components = [component_type]
+            bottleneck_component_ids = [node_id] if node_id else []
+        elif utilization == max_utilization:
+            bottleneck_components.append(component_type)
+            if node_id:
+                bottleneck_component_ids.append(node_id)
 
         max_error_rate = max(max_error_rate, error_rate)
 
         node_metrics.append(
             {
+                "component_id": node_id,
                 "component_type": component_type,
                 "utilization": round(utilization, 3) if utilization != float("inf") else None,
                 "latency_contribution": round(effective_latency, 3),
@@ -164,6 +184,8 @@ def simulate(
         "total_latency": round(total_latency, 3),
         "error_rate": round(max_error_rate, 3),
         "bottleneck_component": bottleneck_component,
+        "bottleneck_components": bottleneck_components,
+        "bottleneck_component_ids": bottleneck_component_ids,
     }
 
     return performance, node_metrics

@@ -58,8 +58,8 @@ def validate_graph(graph: Graph) -> Tuple[List[str], List[Node]]:
 
     if len(entry_nodes) != 1:
         errors.append("Graph must have exactly one entry node.")
-    if len(exit_nodes) != 1:
-        errors.append("Graph must have exactly one exit node.")
+    if len(exit_nodes) < 1:
+        errors.append("Graph must have at least one exit node.")
 
     visited = set()
     for node_id in node_map:

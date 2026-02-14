@@ -3,7 +3,6 @@ const canvasContent = document.getElementById("canvas-content");
 const connections = document.getElementById("connections");
 const inspector = document.getElementById("inspector");
 const output = document.getElementById("output");
-const toggleConnect = document.getElementById("toggle-connect");
 const simulateBtn = document.getElementById("simulate");
 const resetBtn = document.getElementById("reset");
 const toggleLeftPanel = document.getElementById("toggle-left-panel");
@@ -19,8 +18,6 @@ const state = {
   edges: [],
   selectedNodeId: null,
   selectedEdgeIndex: null,
-  connectMode: false,
-  connectSource: null,
   connectDrag: null,
   edgeDrag: null,
   drag: null,
@@ -127,8 +124,8 @@ function createNode(type, x, y) {
     config: { ...defaults[type] },
     x,
     y,
-    width: 60,
-    height: 30,
+    width: 80,
+    height: 40,
   };
   state.nodes.push(node);
   renderNode(node);
@@ -159,6 +156,26 @@ function renderNode(node) {
   });
   el.appendChild(closeBtn);
 
+  const ports = document.createElement("div");
+  ports.className = "node-ports";
+  PORTS.forEach((port) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = `node-port node-port-${port.name}`;
+    dot.setAttribute("aria-label", `Connect ${port.name}`);
+    dot.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      const nodeRect = el.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const portX = (nodeRect.left - canvasRect.left + nodeRect.width * port.dx - state.panX) / state.zoom;
+      const portY = (nodeRect.top - canvasRect.top + nodeRect.height * port.dy - state.panY) / state.zoom;
+      beginConnectDrag(event, node.id, { x: portX, y: portY });
+    });
+    ports.appendChild(dot);
+  });
+  el.appendChild(ports);
+
   el.addEventListener("mousedown", (event) => startDrag(event, node.id, "node"));
   el.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -175,11 +192,8 @@ function startDrag(event, id, kind) {
     const node = getNode(id);
     const el = getNodeElement(id);
     if (!node || !el) return;
-    if (state.connectMode && !event.shiftKey) {
-      return;
-    }
     if (event.shiftKey) {
-      beginConnectDrag(event, node.id);
+      beginConnectDrag(event, node.id, null);
       return;
     }
     const elRect = el.getBoundingClientRect();
@@ -203,18 +217,6 @@ function startDrag(event, id, kind) {
 }
 
 function handleNodeClick(nodeId) {
-  if (state.connectMode) {
-    if (!state.connectSource) {
-      state.connectSource = nodeId;
-      highlightConnectSource(nodeId);
-    } else if (state.connectSource !== nodeId) {
-      addEdge(state.connectSource, nodeId);
-    } else {
-      highlightConnectSource(null);
-      state.connectSource = null;
-    }
-    return;
-  }
   selectNode(nodeId);
 }
 
@@ -306,8 +308,8 @@ function addEdge(source, target) {
 function updateConnections() {
   connections.innerHTML = `
     <defs>
-      <marker id="arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="M0,0 L12,6 L0,12 z" fill="#2563eb" />
+      <marker id="arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="9.5" refX="11" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,0 L12,6 L0,12 z" fill="#111827" />
       </marker>
     </defs>
   `;
@@ -325,14 +327,17 @@ function updateConnections() {
       edge
     );
 
+    const shouldCurve = control || edgeIntersectsNode(x1, y1, x2, y2, source, target);
     const pathData = control
       ? `M ${x1} ${y1} Q ${control.x} ${control.y}, ${x2} ${y2}`
-      : `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+      : shouldCurve
+        ? `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
+        : `M ${x1} ${y1} L ${x2} ${y2}`;
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
-    path.setAttribute("stroke", "#2563eb");
-    path.setAttribute("stroke-width", "2");
+  path.setAttribute("stroke", "#111827");
+  path.setAttribute("stroke-width", "2");
   path.setAttribute("stroke-linecap", "round");
     path.setAttribute("fill", "none");
     path.setAttribute("marker-end", "url(#arrow)");
@@ -401,26 +406,21 @@ function getEdgeGeometry(x1, y1, source, target, edge) {
     y2 = targetCenterY - dy * scale;
   }
 
-  if (edge.control) {
-    return { x2, y2, control: edge.control };
-  }
-
   const distance = Math.hypot(dx, dy);
   const baseCurve = Math.min(90, Math.max(30, distance * 0.25));
   const normX = distance === 0 ? 0 : -dy / distance;
   const normY = distance === 0 ? 0 : dx / distance;
-  let curve = baseCurve;
-
-  if (edgeIntersectsNode(x1, y1, x2, y2, source, target)) {
-    curve = Math.min(140, baseCurve + 40);
-  }
-
+  const curve = Math.min(140, baseCurve + 40);
   const curveX = normX * curve;
   const curveY = normY * curve;
   const cx1 = x1 + dx * 0.25 + curveX;
   const cy1 = y1 + dy * 0.25 + curveY;
   const cx2 = x1 + dx * 0.75 + curveX;
   const cy2 = y1 + dy * 0.75 + curveY;
+
+  if (edge.control) {
+    return { x2, y2, control: edge.control };
+  }
 
   return { x2, y2, cx1, cy1, cx2, cy2, control: null };
 }
@@ -466,6 +466,9 @@ function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
 function getEdgeHandlePoint(x1, y1, x2, y2, cx1, cy1, cx2, cy2, control) {
   if (control) {
     return { x: control.x, y: control.y };
+  }
+  if (!cx1 || !cy1 || !cx2 || !cy2) {
+    return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
   }
   const t = 0.5;
   const x = cubicBezier(x1, cx1, cx2, x2, t);
@@ -576,8 +579,8 @@ function autoSizeNode(nodeId) {
   requestAnimationFrame(() => {
     const paddingX = 28;
     const paddingY = 16;
-    const minWidth = 70;
-    const minHeight = 40;
+  const minWidth = 80;
+  const minHeight = 40;
     const nextWidth = Math.max(minWidth, Math.ceil(label.scrollWidth + paddingX));
     const nextHeight = Math.max(minHeight, Math.ceil(label.scrollHeight + paddingY));
     node.width = nextWidth;
@@ -595,6 +598,18 @@ function handleSimulationResult(result) {
   const performance = result.performance || {};
   const nodeMetrics = result.node_metrics || [];
   const recommendations = result.recommendations || [];
+  const bottleneckIds = performance.bottleneck_component_ids || [];
+  const bottleneckComponents = performance.bottleneck_components || [];
+
+  canvasContent.querySelectorAll(".node").forEach((nodeEl) => {
+    nodeEl.classList.remove("bottleneck");
+  });
+  bottleneckIds.forEach((nodeId) => {
+    const nodeEl = getNodeElement(nodeId);
+    if (nodeEl) {
+      nodeEl.classList.add("bottleneck");
+    }
+  });
 
   output.innerHTML = `
     <div class="result-section">
@@ -615,7 +630,7 @@ function handleSimulationResult(result) {
         <li>Throughput: ${performance.throughput ?? 0}</li>
         <li>Total latency: ${performance.total_latency ?? 0} ms</li>
         <li>Error rate: ${performance.error_rate ?? 0}</li>
-        <li>Bottleneck: ${performance.bottleneck_component ?? "N/A"}</li>
+        <li>Bottleneck: ${bottleneckComponents.length ? bottleneckComponents.join(", ") : (performance.bottleneck_component ?? "N/A")}</li>
       </ul>
     </div>
     <div class="result-block">
@@ -639,16 +654,16 @@ function handleSimulationResult(result) {
   `;
 }
 
-function beginConnectDrag(event, sourceId) {
+function beginConnectDrag(event, sourceId, sourcePoint) {
   const node = getNode(sourceId);
   if (!node) return;
-  const source = {
+  const source = sourcePoint || {
     x: node.x + node.width / 2,
     y: node.y + node.height / 2,
   };
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("stroke", "#2563eb");
-  path.setAttribute("stroke-width", "2");
+  path.setAttribute("stroke", "#111827");
+  path.setAttribute("stroke-width", "1");
   path.setAttribute("fill", "none");
   path.setAttribute("stroke-dasharray", "4 4");
   path.setAttribute("marker-end", "url(#arrow)");
@@ -704,6 +719,7 @@ canvas.addEventListener("mousedown", (event) => {
   if (event.button === 1 || event.altKey || event.button === 0) {
     if (event.button === 0 && !event.altKey) {
       const isNode = event.target.closest(".node");
+      if (event.target.closest(".node-port")) return;
       if (isNode) return;
     }
     const isNode = event.target.closest(".node");
@@ -805,9 +821,7 @@ canvas.addEventListener("mouseleave", () => {
 });
 
 canvas.addEventListener("click", () => {
-  if (!state.connectMode) {
-    clearSelection();
-  }
+  clearSelection();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -830,18 +844,14 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Delete" || event.key === "Backspace") {
     deleteSelectedEdge();
   }
-  if (event.key === "Escape" && state.connectMode) {
-    state.connectSource = null;
-    highlightConnectSource(null);
-  }
 });
 
-toggleConnect.addEventListener("click", () => {
-  state.connectMode = !state.connectMode;
-  state.connectSource = null;
-  toggleConnect.textContent = `Connector mode: ${state.connectMode ? "On" : "Off"}`;
-  document.body.classList.toggle("connect-mode", state.connectMode);
-});
+const PORTS = [
+  { name: "top", dx: 0.5, dy: 0 },
+  { name: "right", dx: 1, dy: 0.5 },
+  { name: "bottom", dx: 0.5, dy: 1 },
+  { name: "left", dx: 0, dy: 0.5 },
+];
 
 toggleLeftPanel.addEventListener("click", () => {
   layout.classList.toggle("left-collapsed");
