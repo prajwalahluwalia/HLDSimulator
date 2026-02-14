@@ -61,11 +61,6 @@ def validate_graph(graph: Graph) -> Tuple[List[str], List[Node]]:
     if len(exit_nodes) != 1:
         errors.append("Graph must have exactly one exit node.")
 
-    for node_id in node_map:
-        if indegree[node_id] > 1 or outdegree[node_id] > 1:
-            errors.append("Graph must be linear with max one edge in/out per node.")
-            break
-
     visited = set()
     for node_id in node_map:
         if node_id not in visited:
@@ -77,21 +72,19 @@ def validate_graph(graph: Graph) -> Tuple[List[str], List[Node]]:
         return errors, []
 
     ordered_ids: List[str] = []
-    current = entry_nodes[0]
-    seen = set()
-    while current is not None:
-        if current in seen:
-            errors.append("Graph must not contain cycles.")
-            break
-        seen.add(current)
-        ordered_ids.append(current)
-        next_nodes = adjacency.get(current, [])
-        current = next_nodes[0] if next_nodes else None
+    indegree_work = dict(indegree)
+    queue = [entry_nodes[0]]
 
-    if len(seen) != len(node_map):
+    while queue:
+        node_id = queue.pop(0)
+        ordered_ids.append(node_id)
+        for neighbor in adjacency.get(node_id, []):
+            indegree_work[neighbor] -= 1
+            if indegree_work[neighbor] == 0:
+                queue.append(neighbor)
+
+    if len(ordered_ids) != len(node_map):
         errors.append("Graph must not contain disconnected nodes.")
-
-    if errors:
         return errors, []
 
     ordered_nodes = [node_map[node_id] for node_id in ordered_ids]

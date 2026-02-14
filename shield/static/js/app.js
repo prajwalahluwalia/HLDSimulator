@@ -22,6 +22,7 @@ const state = {
   connectMode: false,
   connectSource: null,
   connectDrag: null,
+  edgeDrag: null,
   drag: null,
   nodeCounter: 1,
   panX: 0,
@@ -208,6 +209,7 @@ function handleNodeClick(nodeId) {
       highlightConnectSource(nodeId);
     } else if (state.connectSource !== nodeId) {
       addEdge(state.connectSource, nodeId);
+    } else {
       highlightConnectSource(null);
       state.connectSource = null;
     }
@@ -304,7 +306,7 @@ function addEdge(source, target) {
 function updateConnections() {
   connections.innerHTML = `
     <defs>
-      <marker id="arrow" viewBox="0 0 12 12" markerWidth="10" markerHeight="10" refX="12" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+      <marker id="arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto" markerUnits="userSpaceOnUse">
         <path d="M0,0 L12,6 L0,12 z" fill="#2563eb" />
       </marker>
     </defs>
@@ -315,23 +317,23 @@ function updateConnections() {
     if (!source || !target) return;
     const x1 = source.x + source.width / 2;
     const y1 = source.y + source.height / 2;
-    const x2 = target.x + target.width / 2;
-    const y2 = target.y + target.height / 2;
+    const { x2, y2, cx1, cy1, cx2, cy2, control } = getEdgeGeometry(
+      x1,
+      y1,
+      source,
+      target,
+      edge
+    );
 
-    const offsetX = (x2 - x1) * 0.3;
-    const offsetY = -40;
-    const cx1 = x1 + offsetX;
-    const cy1 = y1 + offsetY;
-    const cx2 = x2 - offsetX;
-    const cy2 = y2 + offsetY;
+    const pathData = control
+      ? `M ${x1} ${y1} Q ${control.x} ${control.y}, ${x2} ${y2}`
+      : `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute(
-      "d",
-      `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
-    );
+    path.setAttribute("d", pathData);
     path.setAttribute("stroke", "#2563eb");
     path.setAttribute("stroke-width", "2");
+  path.setAttribute("stroke-linecap", "round");
     path.setAttribute("fill", "none");
     path.setAttribute("marker-end", "url(#arrow)");
     path.dataset.edgeIndex = String(index);
@@ -346,8 +348,142 @@ function updateConnections() {
       clearSelection();
       updateConnections();
     });
+    path.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      removeEdge(index);
+    });
+    path.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      removeEdge(index);
+    });
     connections.appendChild(path);
+
+    if (state.selectedEdgeIndex === index) {
+      const handlePoint = getEdgeHandlePoint(x1, y1, x2, y2, cx1, cy1, cx2, cy2, control);
+      const handle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      handle.setAttribute("cx", String(handlePoint.x));
+      handle.setAttribute("cy", String(handlePoint.y));
+      handle.setAttribute("r", "6");
+      handle.classList.add("connection-handle");
+      handle.addEventListener("mousedown", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        const point = getCanvasPoint(event);
+        state.edgeDrag = {
+          index,
+          offsetX: point.x - handlePoint.x,
+          offsetY: point.y - handlePoint.y,
+        };
+      });
+      connections.appendChild(handle);
+    }
   });
+}
+
+function getEdgeGeometry(x1, y1, source, target, edge) {
+  const targetCenterX = target.x + target.width / 2;
+  const targetCenterY = target.y + target.height / 2;
+  const dx = targetCenterX - x1;
+  const dy = targetCenterY - y1;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  const pad = 4;
+
+  let x2 = targetCenterX;
+  let y2 = targetCenterY;
+  if (absDx > 0 || absDy > 0) {
+    const halfW = target.width / 2 + pad;
+    const halfH = target.height / 2 + pad;
+    const scaleX = absDx > 0 ? halfW / absDx : Infinity;
+    const scaleY = absDy > 0 ? halfH / absDy : Infinity;
+    const scale = Math.min(scaleX, scaleY);
+    x2 = targetCenterX - dx * scale;
+    y2 = targetCenterY - dy * scale;
+  }
+
+  if (edge.control) {
+    return { x2, y2, control: edge.control };
+  }
+
+  const distance = Math.hypot(dx, dy);
+  const baseCurve = Math.min(90, Math.max(30, distance * 0.25));
+  const normX = distance === 0 ? 0 : -dy / distance;
+  const normY = distance === 0 ? 0 : dx / distance;
+  let curve = baseCurve;
+
+  if (edgeIntersectsNode(x1, y1, x2, y2, source, target)) {
+    curve = Math.min(140, baseCurve + 40);
+  }
+
+  const curveX = normX * curve;
+  const curveY = normY * curve;
+  const cx1 = x1 + dx * 0.25 + curveX;
+  const cy1 = y1 + dy * 0.25 + curveY;
+  const cx2 = x1 + dx * 0.75 + curveX;
+  const cy2 = y1 + dy * 0.75 + curveY;
+
+  return { x2, y2, cx1, cy1, cx2, cy2, control: null };
+}
+
+function edgeIntersectsNode(x1, y1, x2, y2, source, target) {
+  return state.nodes.some((node) => {
+    if (node.id === source.id || node.id === target.id) return false;
+    const rect = {
+      left: node.x,
+      right: node.x + node.width,
+      top: node.y,
+      bottom: node.y + node.height,
+    };
+    return lineIntersectsRect(x1, y1, x2, y2, rect);
+  });
+}
+
+function lineIntersectsRect(x1, y1, x2, y2, rect) {
+  if (pointInRect(x1, y1, rect) || pointInRect(x2, y2, rect)) {
+    return true;
+  }
+  const edges = [
+    [rect.left, rect.top, rect.right, rect.top],
+    [rect.right, rect.top, rect.right, rect.bottom],
+    [rect.right, rect.bottom, rect.left, rect.bottom],
+    [rect.left, rect.bottom, rect.left, rect.top],
+  ];
+  return edges.some(([ex1, ey1, ex2, ey2]) => lineIntersectsLine(x1, y1, x2, y2, ex1, ey1, ex2, ey2));
+}
+
+function pointInRect(x, y, rect) {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
+  const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (den === 0) return false;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+function getEdgeHandlePoint(x1, y1, x2, y2, cx1, cy1, cx2, cy2, control) {
+  if (control) {
+    return { x: control.x, y: control.y };
+  }
+  const t = 0.5;
+  const x = cubicBezier(x1, cx1, cx2, x2, t);
+  const y = cubicBezier(y1, cy1, cy2, y2, t);
+  return { x, y };
+}
+
+function cubicBezier(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return u ** 3 * p0 + 3 * u ** 2 * t * p1 + 3 * u * t ** 2 * p2 + t ** 3 * p3;
+}
+
+function getCanvasPoint(event) {
+  const canvasRect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - canvasRect.left - state.panX) / state.zoom,
+    y: (event.clientY - canvasRect.top - state.panY) / state.zoom,
+  };
 }
 
 function getNode(id) {
@@ -406,7 +542,12 @@ function deleteNode(nodeId) {
 
 function deleteSelectedEdge() {
   if (state.selectedEdgeIndex === null) return;
-  state.edges.splice(state.selectedEdgeIndex, 1);
+  removeEdge(state.selectedEdgeIndex);
+}
+
+function removeEdge(index) {
+  if (index === null || index < 0 || index >= state.edges.length) return;
+  state.edges.splice(index, 1);
   state.selectedEdgeIndex = null;
   updateConnections();
   pushHistory();
@@ -577,6 +718,19 @@ canvas.addEventListener("mousedown", (event) => {
 });
 
 canvas.addEventListener("mousemove", (event) => {
+  if (state.edgeDrag) {
+    const point = getCanvasPoint(event);
+    const edge = state.edges[state.edgeDrag.index];
+    if (edge) {
+      edge.control = {
+        x: point.x - state.edgeDrag.offsetX,
+        y: point.y - state.edgeDrag.offsetY,
+      };
+      updateConnections();
+      saveState();
+    }
+    return;
+  }
   if (state.pan) {
     const dx = event.clientX - state.pan.startX;
     const dy = event.clientY - state.pan.startY;
@@ -636,13 +790,18 @@ canvas.addEventListener("mouseup", (event) => {
   if (state.drag && state.drag.kind === "node") {
     pushHistory();
   }
+  if (state.edgeDrag) {
+    pushHistory();
+  }
   state.drag = null;
   state.pan = null;
+  state.edgeDrag = null;
 });
 
 canvas.addEventListener("mouseleave", () => {
   state.drag = null;
   state.pan = null;
+  state.edgeDrag = null;
 });
 
 canvas.addEventListener("click", () => {
@@ -670,6 +829,10 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Delete" || event.key === "Backspace") {
     deleteSelectedEdge();
+  }
+  if (event.key === "Escape" && state.connectMode) {
+    state.connectSource = null;
+    highlightConnectSource(null);
   }
 });
 
