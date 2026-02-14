@@ -12,6 +12,8 @@ const layout = document.getElementById("layout");
 const openLeftPanel = document.getElementById("open-left-panel");
 const openRightPanel = document.getElementById("open-right-panel");
 
+const STORAGE_KEY = "shield-canvas-state";
+
 const state = {
   nodes: [],
   edges: [],
@@ -42,6 +44,9 @@ function snapshotState() {
     nodes: state.nodes.map((node) => ({ ...node, config: { ...node.config } })),
     edges: state.edges.map((edge) => ({ ...edge })),
     nodeCounter: state.nodeCounter,
+    panX: state.panX,
+    panY: state.panY,
+    zoom: state.zoom,
   };
 }
 
@@ -49,17 +54,43 @@ function restoreState(snapshot) {
   state.nodes = snapshot.nodes.map((node) => ({ ...node, config: { ...node.config } }));
   state.edges = snapshot.edges.map((edge) => ({ ...edge }));
   state.nodeCounter = snapshot.nodeCounter;
+  state.panX = snapshot.panX ?? 0;
+  state.panY = snapshot.panY ?? 0;
+  state.zoom = snapshot.zoom ?? 1;
   state.selectedNodeId = null;
   state.selectedEdgeIndex = null;
   canvasContent.querySelectorAll(".node").forEach((node) => node.remove());
   state.nodes.forEach((node) => renderNode(node));
-  updateConnections();
+  applyViewportTransform();
   clearSelection();
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshotState()));
+  } catch (error) {
+    console.warn("Failed to save SHIELD state", error);
+  }
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const snapshot = JSON.parse(saved);
+    if (!snapshot || !Array.isArray(snapshot.nodes) || !Array.isArray(snapshot.edges)) {
+      return;
+    }
+    restoreState(snapshot);
+  } catch (error) {
+    console.warn("Failed to load SHIELD state", error);
+  }
 }
 
 function pushHistory() {
   state.history.past.push(snapshotState());
   state.history.future = [];
+  saveState();
 }
 
 function undo() {
@@ -95,8 +126,8 @@ function createNode(type, x, y) {
     config: { ...defaults[type] },
     x,
     y,
-    width: 140,
-    height: 60,
+    width: 60,
+    height: 30,
   };
   state.nodes.push(node);
   renderNode(node);
@@ -112,7 +143,20 @@ function renderNode(node) {
   el.style.width = `${node.width}px`;
   el.style.height = `${node.height}px`;
   el.dataset.nodeId = node.id;
-  el.textContent = node.config.name || node.type;
+  const label = document.createElement("span");
+  label.className = "node-label";
+  label.textContent = node.config.name || node.type;
+  el.appendChild(label);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "node-close";
+  closeBtn.type = "button";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    deleteNode(node.id);
+  });
+  el.appendChild(closeBtn);
 
   el.addEventListener("mousedown", (event) => startDrag(event, node.id, "node"));
   el.addEventListener("click", (event) => {
@@ -122,6 +166,7 @@ function renderNode(node) {
   el.addEventListener("mouseup", () => syncNodeSize(node.id));
 
   canvasContent.appendChild(el);
+  autoSizeNode(node.id);
 }
 
 function startDrag(event, id, kind) {
@@ -212,20 +257,21 @@ function renderInspector(node) {
       <strong>${node.type}</strong>
       <span class="node-id">${node.id}</span>
     </div>
-    ${fields
-      .map((field) => {
-        const isName = field.key === "name";
-        const inputType = isName ? "text" : "number";
-        const step = isName ? "" : "step=\"0.1\"";
-        return `
-      <label>
-        ${field.label}
-        <input type="${inputType}" ${step} data-key="${field.key}" value="${node.config[field.key] ?? ""}" />
-      </label>
-    `;
-      })
-      .join("")}
-    <button id="delete-node" class="button ghost">Delete component</button>
+    <div class="inspector-fields">
+      ${fields
+        .map((field) => {
+          const isName = field.key === "name";
+          const inputType = isName ? "text" : "number";
+          const step = isName ? "" : "step=\"0.1\"";
+          return `
+        <label>
+          ${field.label}
+          <input type="${inputType}" ${step} data-key="${field.key}" value="${node.config[field.key] ?? ""}" />
+        </label>
+      `;
+        })
+        .join("")}
+    </div>
   `;
 
   inspector.querySelectorAll("input").forEach((input) => {
@@ -234,21 +280,16 @@ function renderInspector(node) {
       if (key === "name") {
         node.config[key] = event.target.value;
         const el = getNodeElement(node.id);
-        if (el) {
-          el.textContent = node.config.name || node.type;
+        const label = el ? el.querySelector(".node-label") : null;
+        if (label) {
+          label.textContent = node.config.name || node.type;
         }
+        autoSizeNode(node.id);
         return;
       }
       node.config[key] = Number(event.target.value);
     });
   });
-
-  const deleteBtn = inspector.querySelector("#delete-node");
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", () => {
-      deleteNode(node.id);
-    });
-  }
 }
 
 function addEdge(source, target) {
@@ -385,6 +426,28 @@ function syncNodeSize(nodeId) {
   }
 }
 
+function autoSizeNode(nodeId) {
+  const node = getNode(nodeId);
+  const el = getNodeElement(nodeId);
+  if (!node || !el) return;
+  const label = el.querySelector(".node-label");
+  if (!label) return;
+  requestAnimationFrame(() => {
+    const paddingX = 28;
+    const paddingY = 16;
+    const minWidth = 70;
+    const minHeight = 40;
+    const nextWidth = Math.max(minWidth, Math.ceil(label.scrollWidth + paddingX));
+    const nextHeight = Math.max(minHeight, Math.ceil(label.scrollHeight + paddingY));
+    node.width = nextWidth;
+    node.height = nextHeight;
+    el.style.width = `${nextWidth}px`;
+    el.style.height = `${nextHeight}px`;
+    updateConnections();
+    saveState();
+  });
+}
+
 function handleSimulationResult(result) {
   const warnings = result.architectural_warnings || [];
   const structural = result.structural_errors || [];
@@ -469,6 +532,15 @@ function attachPaletteDrag() {
   document.querySelectorAll(".palette-item").forEach((item) => {
     item.addEventListener("dragstart", (event) => {
       event.dataTransfer.setData("text/plain", item.dataset.type);
+    });
+
+    item.addEventListener("dblclick", () => {
+      const type = item.dataset.type;
+      if (!type) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = (canvasRect.width / 2 - state.panX) / state.zoom - 40;
+      const y = (canvasRect.height / 2 - state.panY) / state.zoom - 20;
+      createNode(type, x, y);
     });
   });
 
@@ -694,3 +766,5 @@ simulateBtn.addEventListener("click", async () => {
 resetBtn.addEventListener("click", resetCanvas);
 
 attachPaletteDrag();
+
+loadState();

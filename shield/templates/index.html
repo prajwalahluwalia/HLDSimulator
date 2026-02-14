@@ -22,49 +22,51 @@
         <h2>Components</h2>
         <button id="toggle-left-panel" class="icon-button" aria-label="Toggle left panel">⟨</button>
       </div>
-      <section>
-        <div class="palette">
-          <div class="palette-item" draggable="true" data-type="User" data-label="User">
-            <span class="icon">👤</span>
-          </div>
-          <div class="palette-item" draggable="true" data-type="LoadBalancer" data-label="Load Balancer">
-            <span class="icon">🧭</span>
-          </div>
-          <div class="palette-item" draggable="true" data-type="Server" data-label="Server">
-            <span class="icon">🖥️</span>
-          </div>
-          <div class="palette-item" draggable="true" data-type="Database" data-label="Database">
-            <span class="icon">🗄️</span>
-          </div>
-          <div class="palette-item" draggable="true" data-type="Cache" data-label="Cache">
-            <span class="icon">🧊</span>
-          </div>
-          <div class="palette-item" draggable="true" data-type="Queue" data-label="Message Queue">
-            <span class="icon">📨</span>
+      <section class="panel-section components-section">
+        <div class="section-body">
+          <div class="palette">
+            <div class="palette-item" draggable="true" data-type="User" data-label="User">
+              <span class="icon">👤</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="LoadBalancer" data-label="Load Balancer">
+              <span class="icon">🧭</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="Server" data-label="Server">
+              <span class="icon">🖥️</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="Database" data-label="Database">
+              <span class="icon">🗄️</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="Cache" data-label="Cache">
+              <span class="icon">🧊</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="Queue" data-label="Message Queue">
+              <span class="icon">📨</span>
+            </div>
           </div>
         </div>
-        <p class="helper-text">Drag components onto the canvas. You can add multiple servers and databases.</p>
       </section>
 
-      <section>
+      <section class="panel-section inspector-section">
         <h2>Inspector</h2>
-        <div id="inspector" class="inspector">
-          <p>Select a node to edit its parameters.</p>
+        <div class="section-body">
+          <div id="inspector" class="inspector">
+            <p>Select a node to edit its parameters.</p>
+          </div>
         </div>
       </section>
 
-      <section>
+      <section class="panel-section actions-section">
         <h2>Actions</h2>
-        <button id="toggle-connect" class="button">Connector mode: Off</button>
-        <p class="helper-text">Tip: hold Shift and drag from one node to another to connect.</p>
-        <div class="action-footer">
-          <button id="simulate" class="button primary">Simulate</button>
-          <button id="reset" class="button ghost">Reset canvas</button>
+        <div class="section-body">
+          <button id="toggle-connect" class="button">Connector mode: Off</button>
+          <p class="helper-text">Tip: hold Shift and drag from one node to another to connect.</p>
         </div>
       </section>
     </aside>
 
     <section class="canvas-wrapper">
+      <button id="reset" class="canvas-reset" aria-label="Clear canvas">🧽</button>
       <button id="open-left-panel" class="floating-toggle left" aria-label="Show left panel">⟩</button>
       <button id="open-right-panel" class="floating-toggle right" aria-label="Show right panel">⟨</button>
       <div id="canvas" class="canvas">
@@ -82,6 +84,9 @@
       <section>
         <div id="output" class="output">
           <p>Run a simulation to see results.</p>
+        </div>
+        <div class="panel-actions">
+          <button id="simulate" class="button primary">Simulate</button>
         </div>
       </section>
     </aside>
