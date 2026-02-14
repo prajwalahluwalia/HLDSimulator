@@ -1,4 +1,5 @@
 const canvas = document.getElementById("canvas");
+const canvasContent = document.getElementById("canvas-content");
 const connections = document.getElementById("connections");
 const inspector = document.getElementById("inspector");
 const output = document.getElementById("output");
@@ -6,18 +7,76 @@ const toggleConnect = document.getElementById("toggle-connect");
 const simulateBtn = document.getElementById("simulate");
 const resetBtn = document.getElementById("reset");
 const toggleLeftPanel = document.getElementById("toggle-left-panel");
+const toggleRightPanel = document.getElementById("toggle-right-panel");
 const layout = document.getElementById("layout");
+const openLeftPanel = document.getElementById("open-left-panel");
+const openRightPanel = document.getElementById("open-right-panel");
 
 const state = {
   nodes: [],
   edges: [],
   selectedNodeId: null,
+  selectedEdgeIndex: null,
   connectMode: false,
   connectSource: null,
   connectDrag: null,
   drag: null,
   nodeCounter: 1,
+  panX: 0,
+  panY: 0,
+  zoom: 1,
+  pan: null,
+  history: {
+    past: [],
+    future: [],
+  },
 };
+
+function applyViewportTransform() {
+  canvasContent.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+  updateConnections();
+}
+
+function snapshotState() {
+  return {
+    nodes: state.nodes.map((node) => ({ ...node, config: { ...node.config } })),
+    edges: state.edges.map((edge) => ({ ...edge })),
+    nodeCounter: state.nodeCounter,
+  };
+}
+
+function restoreState(snapshot) {
+  state.nodes = snapshot.nodes.map((node) => ({ ...node, config: { ...node.config } }));
+  state.edges = snapshot.edges.map((edge) => ({ ...edge }));
+  state.nodeCounter = snapshot.nodeCounter;
+  state.selectedNodeId = null;
+  state.selectedEdgeIndex = null;
+  canvasContent.querySelectorAll(".node").forEach((node) => node.remove());
+  state.nodes.forEach((node) => renderNode(node));
+  updateConnections();
+  clearSelection();
+}
+
+function pushHistory() {
+  state.history.past.push(snapshotState());
+  state.history.future = [];
+}
+
+function undo() {
+  if (!state.history.past.length) return;
+  const current = snapshotState();
+  const previous = state.history.past.pop();
+  state.history.future.push(current);
+  restoreState(previous);
+}
+
+function redo() {
+  if (!state.history.future.length) return;
+  const current = snapshotState();
+  const next = state.history.future.pop();
+  state.history.past.push(current);
+  restoreState(next);
+}
 
 const defaults = {
   User: { name: "User", number_of_users: 100, requests_per_user: 1 },
@@ -42,6 +101,7 @@ function createNode(type, x, y) {
   state.nodes.push(node);
   renderNode(node);
   updateConnections();
+  pushHistory();
 }
 
 function renderNode(node) {
@@ -61,7 +121,7 @@ function renderNode(node) {
   });
   el.addEventListener("mouseup", () => syncNodeSize(node.id));
 
-  canvas.appendChild(el);
+  canvasContent.appendChild(el);
 }
 
 function startDrag(event, id, kind) {
@@ -69,20 +129,28 @@ function startDrag(event, id, kind) {
     const node = getNode(id);
     const el = getNodeElement(id);
     if (!node || !el) return;
+    if (state.connectMode && !event.shiftKey) {
+      return;
+    }
     if (event.shiftKey) {
       beginConnectDrag(event, node.id);
       return;
     }
+    const elRect = el.getBoundingClientRect();
     const isResizeHandle =
-      event.offsetX > el.clientWidth - 18 && event.offsetY > el.clientHeight - 18;
+      event.clientX - elRect.left > elRect.width - 18 &&
+      event.clientY - elRect.top > elRect.height - 18;
     if (isResizeHandle) {
       return;
     }
+    const canvasRect = canvas.getBoundingClientRect();
+    const pointerX = (event.clientX - canvasRect.left - state.panX) / state.zoom;
+    const pointerY = (event.clientY - canvasRect.top - state.panY) / state.zoom;
     state.drag = {
       kind,
       id,
-      offsetX: event.offsetX,
-      offsetY: event.offsetY,
+      offsetX: pointerX - node.x,
+      offsetY: pointerY - node.y,
     };
     return;
   }
@@ -92,8 +160,10 @@ function handleNodeClick(nodeId) {
   if (state.connectMode) {
     if (!state.connectSource) {
       state.connectSource = nodeId;
+      highlightConnectSource(nodeId);
     } else if (state.connectSource !== nodeId) {
       addEdge(state.connectSource, nodeId);
+      highlightConnectSource(null);
       state.connectSource = null;
     }
     return;
@@ -103,9 +173,22 @@ function handleNodeClick(nodeId) {
 
 function selectNode(nodeId) {
   state.selectedNodeId = nodeId;
+  highlightSelectedNode(nodeId);
   const node = getNode(nodeId);
   if (!node) return;
   renderInspector(node);
+}
+
+function highlightSelectedNode(nodeId) {
+  canvasContent.querySelectorAll(".node").forEach((nodeEl) => {
+    nodeEl.classList.toggle("selected", nodeEl.dataset.nodeId === nodeId);
+  });
+}
+
+function highlightConnectSource(nodeId) {
+  canvasContent.querySelectorAll(".node").forEach((nodeEl) => {
+    nodeEl.classList.toggle("connect-source", nodeEl.dataset.nodeId === nodeId);
+  });
 }
 
 function renderInspector(node) {
@@ -174,33 +257,25 @@ function addEdge(source, target) {
   }
   state.edges.push({ source, target });
   updateConnections();
+  pushHistory();
 }
 
 function updateConnections() {
   connections.innerHTML = `
     <defs>
-      <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="3" orient="auto" markerUnits="strokeWidth">
-        <path d="M0,0 L0,6 L9,3 z" fill="#4b7bec" />
+      <marker id="arrow" viewBox="0 0 12 12" markerWidth="10" markerHeight="10" refX="12" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,0 L12,6 L0,12 z" fill="#2563eb" />
       </marker>
     </defs>
   `;
-  state.edges.forEach((edge) => {
+  state.edges.forEach((edge, index) => {
     const source = getNode(edge.source);
     const target = getNode(edge.target);
     if (!source || !target) return;
-
-    const sourceEl = getNodeElement(source.id);
-    const targetEl = getNodeElement(target.id);
-    if (!sourceEl || !targetEl) return;
-
-    const sourceRect = sourceEl.getBoundingClientRect();
-    const targetRect = targetEl.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
-
-    const x1 = sourceRect.left - canvasRect.left + sourceRect.width / 2;
-    const y1 = sourceRect.top - canvasRect.top + sourceRect.height / 2;
-    const x2 = targetRect.left - canvasRect.left + targetRect.width / 2;
-    const y2 = targetRect.top - canvasRect.top + targetRect.height / 2;
+    const x1 = source.x + source.width / 2;
+    const y1 = source.y + source.height / 2;
+    const x2 = target.x + target.width / 2;
+    const y2 = target.y + target.height / 2;
 
     const offsetX = (x2 - x1) * 0.3;
     const offsetY = -40;
@@ -218,6 +293,18 @@ function updateConnections() {
     path.setAttribute("stroke-width", "2");
     path.setAttribute("fill", "none");
     path.setAttribute("marker-end", "url(#arrow)");
+    path.dataset.edgeIndex = String(index);
+    path.classList.add("connection-path");
+    if (state.selectedEdgeIndex === index) {
+      path.classList.add("selected");
+    }
+    path.addEventListener("click", (event) => {
+      event.stopPropagation();
+      state.selectedEdgeIndex = index;
+      state.selectedNodeId = null;
+      clearSelection();
+      updateConnections();
+    });
     connections.appendChild(path);
   });
 }
@@ -227,11 +314,14 @@ function getNode(id) {
 }
 
 function getNodeElement(id) {
-  return canvas.querySelector(`[data-node-id="${id}"]`);
+  return canvasContent.querySelector(`[data-node-id="${id}"]`);
 }
 
 function clearSelection() {
   state.selectedNodeId = null;
+  state.selectedEdgeIndex = null;
+  highlightSelectedNode(null);
+  highlightConnectSource(null);
   inspector.innerHTML = "<p>Select a node to edit its parameters.</p>";
 }
 
@@ -239,13 +329,19 @@ function resetCanvas() {
   state.nodes = [];
   state.edges = [];
   state.selectedNodeId = null;
+  state.selectedEdgeIndex = null;
   state.connectSource = null;
   state.connectDrag = null;
   state.nodeCounter = 1;
-  canvas.querySelectorAll(".node").forEach((node) => node.remove());
+  state.panX = 0;
+  state.panY = 0;
+  state.zoom = 1;
+  applyViewportTransform();
+  canvasContent.querySelectorAll(".node").forEach((node) => node.remove());
   updateConnections();
   clearSelection();
   output.innerHTML = "<p>Run a simulation to see results.</p>";
+  pushHistory();
 }
 
 function deleteNode(nodeId) {
@@ -259,17 +355,34 @@ function deleteNode(nodeId) {
   }
   state.connectSource = null;
   state.selectedNodeId = null;
+  state.selectedEdgeIndex = null;
+  highlightSelectedNode(null);
+  highlightConnectSource(null);
   updateConnections();
   clearSelection();
+  pushHistory();
+}
+
+function deleteSelectedEdge() {
+  if (state.selectedEdgeIndex === null) return;
+  state.edges.splice(state.selectedEdgeIndex, 1);
+  state.selectedEdgeIndex = null;
+  updateConnections();
+  pushHistory();
 }
 
 function syncNodeSize(nodeId) {
   const node = getNode(nodeId);
   const el = getNodeElement(nodeId);
   if (!node || !el) return;
+  const prevWidth = node.width;
+  const prevHeight = node.height;
   node.width = el.offsetWidth;
   node.height = el.offsetHeight;
   updateConnections();
+  if (prevWidth !== node.width || prevHeight !== node.height) {
+    pushHistory();
+  }
 }
 
 function handleSimulationResult(result) {
@@ -325,7 +438,6 @@ function handleSimulationResult(result) {
 function beginConnectDrag(event, sourceId) {
   const node = getNode(sourceId);
   if (!node) return;
-  const canvasRect = canvas.getBoundingClientRect();
   const source = {
     x: node.x + node.width / 2,
     y: node.y + node.height / 2,
@@ -335,12 +447,12 @@ function beginConnectDrag(event, sourceId) {
   path.setAttribute("stroke-width", "2");
   path.setAttribute("fill", "none");
   path.setAttribute("stroke-dasharray", "4 4");
+  path.setAttribute("marker-end", "url(#arrow)");
   connections.appendChild(path);
   state.connectDrag = {
     sourceId,
     path,
     source,
-    canvasRect,
   };
 }
 
@@ -369,17 +481,43 @@ function attachPaletteDrag() {
     const type = event.dataTransfer.getData("text/plain");
     if (!type) return;
     const canvasRect = canvas.getBoundingClientRect();
-    const x = event.clientX - canvasRect.left - 40;
-    const y = event.clientY - canvasRect.top - 20;
+    const x = (event.clientX - canvasRect.left - 40 - state.panX) / state.zoom;
+    const y = (event.clientY - canvasRect.top - 20 - state.panY) / state.zoom;
     createNode(type, x, y);
   });
 }
 
+canvas.addEventListener("mousedown", (event) => {
+  if (event.button === 1 || event.altKey || event.button === 0) {
+    if (event.button === 0 && !event.altKey) {
+      const isNode = event.target.closest(".node");
+      if (isNode) return;
+    }
+    const isNode = event.target.closest(".node");
+    if (isNode) return;
+    state.pan = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: state.panX,
+      originY: state.panY,
+    };
+  }
+});
+
 canvas.addEventListener("mousemove", (event) => {
+  if (state.pan) {
+    const dx = event.clientX - state.pan.startX;
+    const dy = event.clientY - state.pan.startY;
+    state.panX = state.pan.originX + dx;
+    state.panY = state.pan.originY + dy;
+    applyViewportTransform();
+    return;
+  }
   if (state.connectDrag) {
-    const { source, path, canvasRect } = state.connectDrag;
-    const x2 = event.clientX - canvasRect.left;
-    const y2 = event.clientY - canvasRect.top;
+    const { source, path } = state.connectDrag;
+    const canvasRect = canvas.getBoundingClientRect();
+    const x2 = (event.clientX - canvasRect.left - state.panX) / state.zoom;
+    const y2 = (event.clientY - canvasRect.top - state.panY) / state.zoom;
     const offsetX = (x2 - source.x) * 0.3;
     const offsetY = -30;
     const cx1 = source.x + offsetX;
@@ -397,8 +535,10 @@ canvas.addEventListener("mousemove", (event) => {
     const node = getNode(state.drag.id);
     if (!node) return;
     const canvasRect = canvas.getBoundingClientRect();
-    node.x = event.clientX - canvasRect.left - state.drag.offsetX;
-    node.y = event.clientY - canvasRect.top - state.drag.offsetY;
+    const pointerX = (event.clientX - canvasRect.left - state.panX) / state.zoom;
+    const pointerY = (event.clientY - canvasRect.top - state.panY) / state.zoom;
+    node.x = pointerX - state.drag.offsetX;
+    node.y = pointerY - state.drag.offsetY;
     const el = getNodeElement(node.id);
     if (el) {
       el.style.left = `${node.x}px`;
@@ -421,11 +561,16 @@ canvas.addEventListener("mouseup", (event) => {
     }
     state.connectDrag = null;
   }
+  if (state.drag && state.drag.kind === "node") {
+    pushHistory();
+  }
   state.drag = null;
+  state.pan = null;
 });
 
 canvas.addEventListener("mouseleave", () => {
   state.drag = null;
+  state.pan = null;
 });
 
 canvas.addEventListener("click", () => {
@@ -434,15 +579,56 @@ canvas.addEventListener("click", () => {
   }
 });
 
+document.addEventListener("keydown", (event) => {
+  const isMac = navigator.platform.toLowerCase().includes("mac");
+  const modifier = isMac ? event.metaKey : event.ctrlKey;
+  if (!modifier) return;
+
+  if (event.key.toLowerCase() === "z" && !event.shiftKey) {
+    event.preventDefault();
+    undo();
+  }
+
+  if (event.key.toLowerCase() === "y" || (event.key.toLowerCase() === "z" && event.shiftKey)) {
+    event.preventDefault();
+    redo();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Delete" || event.key === "Backspace") {
+    deleteSelectedEdge();
+  }
+});
+
 toggleConnect.addEventListener("click", () => {
   state.connectMode = !state.connectMode;
   state.connectSource = null;
   toggleConnect.textContent = `Connector mode: ${state.connectMode ? "On" : "Off"}`;
+  document.body.classList.toggle("connect-mode", state.connectMode);
 });
 
 toggleLeftPanel.addEventListener("click", () => {
   layout.classList.toggle("left-collapsed");
 });
+
+if (toggleRightPanel) {
+  toggleRightPanel.addEventListener("click", () => {
+    layout.classList.toggle("right-collapsed");
+  });
+}
+
+if (openLeftPanel) {
+  openLeftPanel.addEventListener("click", () => {
+    layout.classList.remove("left-collapsed");
+  });
+}
+
+if (openRightPanel) {
+  openRightPanel.addEventListener("click", () => {
+    layout.classList.remove("right-collapsed");
+  });
+}
 
 function getNodeIdFromPoint(event) {
   const element = document.elementFromPoint(event.clientX, event.clientY);
@@ -451,6 +637,48 @@ function getNodeIdFromPoint(event) {
   if (!nodeElement) return null;
   return nodeElement.dataset.nodeId;
 }
+
+canvas.addEventListener("wheel", (event) => {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  const delta = event.deltaY > 0 ? -0.05 : 0.05;
+  const nextZoom = Math.min(2, Math.max(0.5, state.zoom + delta));
+  const canvasRect = canvas.getBoundingClientRect();
+  const mouseX = event.clientX - canvasRect.left;
+  const mouseY = event.clientY - canvasRect.top;
+  const zoomFactor = nextZoom / state.zoom;
+
+  state.panX = mouseX - (mouseX - state.panX) * zoomFactor;
+  state.panY = mouseY - (mouseY - state.panY) * zoomFactor;
+  state.zoom = nextZoom;
+  applyViewportTransform();
+}, { passive: false });
+
+document.addEventListener("keydown", (event) => {
+  const isMac = navigator.platform.toLowerCase().includes("mac");
+  const modifier = isMac ? event.metaKey : event.ctrlKey;
+  if (!modifier) return;
+
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    state.zoom = Math.min(2, state.zoom + 0.05);
+    applyViewportTransform();
+  }
+
+  if (event.key === "-") {
+    event.preventDefault();
+    state.zoom = Math.max(0.5, state.zoom - 0.05);
+    applyViewportTransform();
+  }
+
+  if (event.key.toLowerCase() === "0") {
+    event.preventDefault();
+    state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
+    applyViewportTransform();
+  }
+});
 
 simulateBtn.addEventListener("click", async () => {
   const payload = buildGraphPayload();

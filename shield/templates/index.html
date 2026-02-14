@@ -18,8 +18,11 @@
   </header>
   <main class="layout" id="layout">
     <aside class="panel" id="left-panel">
-      <section>
+      <div class="panel-header">
         <h2>Components</h2>
+        <button id="toggle-left-panel" class="icon-button" aria-label="Toggle left panel">⟨</button>
+      </div>
+      <section>
         <div class="palette">
           <div class="palette-item" draggable="true" data-type="User" data-label="User">
             <span class="icon">👤</span>
@@ -52,23 +55,31 @@
 
       <section>
         <h2>Actions</h2>
-        <button id="toggle-left-panel" class="button ghost">Toggle panel</button>
         <button id="toggle-connect" class="button">Connector mode: Off</button>
         <p class="helper-text">Tip: hold Shift and drag from one node to another to connect.</p>
-        <button id="simulate" class="button primary">Simulate</button>
-        <button id="reset" class="button ghost">Reset canvas</button>
+        <div class="action-footer">
+          <button id="simulate" class="button primary">Simulate</button>
+          <button id="reset" class="button ghost">Reset canvas</button>
+        </div>
       </section>
     </aside>
 
     <section class="canvas-wrapper">
+      <button id="open-left-panel" class="floating-toggle left" aria-label="Show left panel">⟩</button>
+      <button id="open-right-panel" class="floating-toggle right" aria-label="Show right panel">⟨</button>
       <div id="canvas" class="canvas">
-        <svg id="connections" class="connections"></svg>
+        <div id="canvas-content" class="canvas-content">
+          <svg id="connections" class="connections"></svg>
+        </div>
       </div>
     </section>
 
-    <aside class="panel">
-      <section>
+    <aside class="panel" id="right-panel">
+      <div class="panel-header">
         <h2>Simulation Output</h2>
+        <button id="toggle-right-panel" class="icon-button" aria-label="Toggle right panel">⟩</button>
+      </div>
+      <section>
         <div id="output" class="output">
           <p>Run a simulation to see results.</p>
         </div>
