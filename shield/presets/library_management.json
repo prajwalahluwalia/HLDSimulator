@@ -1,0 +1,92 @@
+{
+  "name": "Library Management",
+  "description": "Library system with search indexing, inventory management, and notifications.",
+  "traffic": {
+    "users": 1500,
+    "requests_per_user": 3
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Catalog MVP",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 8000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "app", "type": "Server", "name": "Library App", "capacity": 6000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Catalog DB", "capacity": 6000, "base_latency": 60, "position": {"x": 620, "y": 220}}
+        ],
+        "edges": [
+          {"source": "user", "target": "api"},
+          {"source": "api", "target": "app"},
+          {"source": "app", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 2,
+      "title": "Add Cache + Search",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 9000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "app", "type": "Server", "name": "Library App", "capacity": 7000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "cache", "type": "Cache", "name": "Catalog Cache", "capacity": 9000, "base_latency": 5, "position": {"x": 600, "y": 160}},
+          {"id": "search", "type": "SearchIndex", "name": "Search Index", "capacity": 7000, "base_latency": 12, "position": {"x": 600, "y": 280}},
+          {"id": "db", "type": "Database", "name": "Catalog DB", "capacity": 7000, "base_latency": 60, "position": {"x": 800, "y": 220}}
+        ],
+        "edges": [
+          {"source": "user", "target": "api"},
+          {"source": "api", "target": "app"},
+          {"source": "app", "target": "cache"},
+          {"source": "app", "target": "search"},
+          {"source": "cache", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 3,
+      "title": "Inventory + Notifications",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 10000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "app", "type": "InventoryService", "name": "Inventory Service", "capacity": 8000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "cache", "type": "Cache", "name": "Catalog Cache", "capacity": 10000, "base_latency": 5, "position": {"x": 600, "y": 140}},
+          {"id": "search", "type": "SearchIndex", "name": "Search Index", "capacity": 8000, "base_latency": 12, "position": {"x": 600, "y": 300}},
+          {"id": "queue", "type": "Queue", "name": "Notification Queue", "capacity": 8000, "base_latency": 12, "position": {"x": 780, "y": 340}},
+          {"id": "worker", "type": "Worker", "name": "Notification Worker", "capacity": 7000, "base_latency": 16, "position": {"x": 940, "y": 340}},
+          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "capacity": 6000, "base_latency": 15, "position": {"x": 940, "y": 140}},
+          {"id": "db", "type": "Database", "name": "Catalog DB", "capacity": 8000, "base_latency": 60, "position": {"x": 960, "y": 220}}
+        ],
+        "edges": [
+          {"source": "user", "target": "api"},
+          {"source": "api", "target": "app"},
+          {"source": "app", "target": "cache"},
+          {"source": "app", "target": "search"},
+          {"source": "cache", "target": "db"},
+          {"source": "app", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "db"},
+          {"source": "app", "target": "notify"}
+        ]
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "question": "How do you index books for fast search?",
+      "answer": "Use a dedicated search index with inverted indexes and async sync from the primary database.",
+      "topics": ["indexing", "search"]
+    },
+    {
+      "question": "How do you handle cache invalidation for availability?",
+      "answer": "Invalidate cache on checkout and return events and use short TTLs for availability data.",
+      "topics": ["cache invalidation", "consistency"]
+    }
+  ],
+  "design_notes": {
+    "search": "Elasticsearch-style index",
+    "notifications": "Async queue for overdue reminders"
+  }
+}

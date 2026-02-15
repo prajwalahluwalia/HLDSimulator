@@ -1,0 +1,118 @@
+{
+  "name": "URL Shortener",
+  "description": "Read-heavy distributed URL shortening service with caching, replication, rate limiting, async analytics, and ID generation.",
+  "traffic": {
+    "users": 10000,
+    "requests_per_user": 4
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Basic Service",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 40000, "base_latency": 5, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 28000, "base_latency": 8, "position": {"x": 380, "y": 240}},
+          {"id": "app", "type": "Server", "name": "App Server", "capacity": 20000, "base_latency": 20, "position": {"x": 540, "y": 240}},
+          {"id": "db", "type": "Database", "name": "Primary DB", "capacity": 15000, "base_latency": 80, "position": {"x": 720, "y": 240}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app"},
+          {"source": "app", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 2,
+      "title": "Add Rate Limiting + Cache",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 45000, "base_latency": 5, "position": {"x": 220, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "capacity": 30000, "base_latency": 3, "position": {"x": 360, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 30000, "base_latency": 8, "position": {"x": 520, "y": 240}},
+          {"id": "app-1", "type": "Server", "name": "App Server A", "capacity": 22000, "base_latency": 18, "position": {"x": 680, "y": 180}},
+          {"id": "app-2", "type": "Server", "name": "App Server B", "capacity": 22000, "base_latency": 18, "position": {"x": 680, "y": 300}},
+          {"id": "cache", "type": "Cache", "name": "Redis Cache", "capacity": 28000, "base_latency": 5, "position": {"x": 860, "y": 240}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "capacity": 16000, "base_latency": 80, "position": {"x": 1040, "y": 240}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "rate"},
+          {"source": "rate", "target": "lb"},
+          {"source": "lb", "target": "app-1"},
+          {"source": "lb", "target": "app-2"},
+          {"source": "app-1", "target": "cache"},
+          {"source": "app-2", "target": "cache"},
+          {"source": "cache", "target": "db-primary"}
+        ]
+      }
+    },
+    {
+      "stage": 3,
+      "title": "Full Production + Analytics",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 50000, "base_latency": 5, "position": {"x": 200, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "capacity": 32000, "base_latency": 3, "position": {"x": 340, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 32000, "base_latency": 8, "position": {"x": 480, "y": 240}},
+          {"id": "app-1", "type": "Server", "name": "App Server A", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 160}},
+          {"id": "app-2", "type": "Server", "name": "App Server B", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 320}},
+          {"id": "id-gen", "type": "IDGenerator", "name": "ID Generator", "capacity": 20000, "base_latency": 12, "position": {"x": 820, "y": 80}},
+          {"id": "cache", "type": "Cache", "name": "Redis Cache", "capacity": 32000, "base_latency": 5, "position": {"x": 820, "y": 240}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "capacity": 18000, "base_latency": 80, "position": {"x": 1000, "y": 160}},
+          {"id": "db-replica-1", "type": "Database", "name": "Read Replica A", "capacity": 20000, "base_latency": 70, "position": {"x": 1000, "y": 260}},
+          {"id": "db-replica-2", "type": "Database", "name": "Read Replica B", "capacity": 20000, "base_latency": 70, "position": {"x": 1000, "y": 360}},
+          {"id": "queue", "type": "Queue", "name": "Analytics Queue", "capacity": 25000, "base_latency": 10, "position": {"x": 1180, "y": 320}},
+          {"id": "worker", "type": "Worker", "name": "Analytics Worker", "capacity": 20000, "base_latency": 20, "position": {"x": 1340, "y": 320}},
+          {"id": "analytics-db", "type": "Database", "name": "Analytics DB", "capacity": 24000, "base_latency": 60, "position": {"x": 1500, "y": 320}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "rate"},
+          {"source": "rate", "target": "lb"},
+          {"source": "lb", "target": "app-1"},
+          {"source": "lb", "target": "app-2"},
+          {"source": "app-1", "target": "id-gen"},
+          {"source": "app-2", "target": "id-gen"},
+          {"source": "app-1", "target": "cache"},
+          {"source": "app-2", "target": "cache"},
+          {"source": "cache", "target": "db-primary"},
+          {"source": "cache", "target": "db-replica-1"},
+          {"source": "cache", "target": "db-replica-2"},
+          {"source": "app-1", "target": "queue"},
+          {"source": "app-2", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "analytics-db"}
+        ]
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "question": "How do you handle hot keys in a URL shortener?",
+      "answer": "Introduce key salting for popular URLs, cache hot entries aggressively, and shard by hashed key prefix.",
+      "topics": ["hot key", "sharding", "cache"]
+    },
+    {
+      "question": "Which consistency model is acceptable for reads?",
+      "answer": "Eventual consistency for replicas is acceptable with primary writes and fallback when lag increases.",
+      "topics": ["replication lag", "CAP theorem", "consistency"]
+    },
+    {
+      "question": "How do you prevent thundering herd on cache miss?",
+      "answer": "Use request coalescing, soft TTLs, and background refresh to avoid stampedes.",
+      "topics": ["thundering herd", "cache invalidation"]
+    }
+  ],
+  "design_notes": {
+    "read_ratio": "90%",
+    "write_ratio": "10%",
+    "id_generation": "Base62 + Snowflake hybrid",
+    "analytics": "Async event logging via message queue"
+  }
+}

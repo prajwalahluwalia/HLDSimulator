@@ -1,0 +1,71 @@
+{
+  "name": "Rate Limiter System",
+  "description": "Edge rate limiting with token bucket and distributed counters.",
+  "traffic": {
+    "users": 8000,
+    "requests_per_user": 6
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Edge Token Bucket",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
+          {"id": "edge", "type": "Edge", "name": "Edge", "capacity": 20000, "base_latency": 6, "position": {"x": 240, "y": 220}},
+          {"id": "bucket", "type": "TokenBucket", "name": "Token Bucket", "capacity": 18000, "base_latency": 6, "position": {"x": 420, "y": 220}},
+          {"id": "store", "type": "Cache", "name": "Redis Counter Store", "capacity": 20000, "base_latency": 4, "position": {"x": 620, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Quota DB", "capacity": 14000, "base_latency": 60, "position": {"x": 820, "y": 220}}
+        ],
+        "edges": [
+          {"source": "user", "target": "edge"},
+          {"source": "edge", "target": "bucket"},
+          {"source": "bucket", "target": "store"},
+          {"source": "store", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 2,
+      "title": "Distributed Sync",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
+          {"id": "edge", "type": "Edge", "name": "Edge", "capacity": 22000, "base_latency": 6, "position": {"x": 240, "y": 220}},
+          {"id": "bucket", "type": "TokenBucket", "name": "Token Bucket", "capacity": 20000, "base_latency": 6, "position": {"x": 420, "y": 220}},
+          {"id": "sync", "type": "DistributedSync", "name": "Distributed Sync", "capacity": 18000, "base_latency": 10, "position": {"x": 620, "y": 140}},
+          {"id": "queue", "type": "Queue", "name": "Sync Queue", "capacity": 16000, "base_latency": 12, "position": {"x": 620, "y": 300}},
+          {"id": "worker", "type": "Worker", "name": "Sync Worker", "capacity": 14000, "base_latency": 16, "position": {"x": 800, "y": 300}},
+          {"id": "store", "type": "Cache", "name": "Redis Counter Store", "capacity": 22000, "base_latency": 4, "position": {"x": 820, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Quota DB", "capacity": 16000, "base_latency": 60, "position": {"x": 980, "y": 220}}
+        ],
+        "edges": [
+          {"source": "user", "target": "edge"},
+          {"source": "edge", "target": "bucket"},
+          {"source": "bucket", "target": "sync"},
+          {"source": "bucket", "target": "store"},
+          {"source": "store", "target": "db"},
+          {"source": "sync", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "db"}
+        ]
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "question": "How do you prevent hot key issues in rate limiter counters?",
+      "answer": "Shard counters by user hash and use sliding windows with probabilistic sampling.",
+      "topics": ["hot key", "partitioning"]
+    },
+    {
+      "question": "How do you handle distributed synchronization?",
+      "answer": "Use async queues to reconcile counter deltas and accept minor drift with periodic sync.",
+      "topics": ["distributed locks", "eventual consistency"]
+    }
+  ],
+  "design_notes": {
+    "algorithm": "Token bucket with Redis counters",
+    "sync": "Async sync to persistent quota database"
+  }
+}

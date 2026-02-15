@@ -1,0 +1,112 @@
+{
+  "name": "Booking System",
+  "description": "Ticket booking platform with inventory locking and payment processing.",
+  "traffic": {
+    "users": 2000,
+    "requests_per_user": 4
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Basic MVP",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 20000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 15000, "base_latency": 10, "position": {"x": 380, "y": 240}},
+          {"id": "app", "type": "Server", "name": "App Server", "capacity": 12000, "base_latency": 25, "position": {"x": 540, "y": 240}},
+          {"id": "db", "type": "Database", "name": "Booking DB", "capacity": 9000, "base_latency": 70, "position": {"x": 720, "y": 240}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app"},
+          {"source": "app", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 2,
+      "title": "Add Cache + Replica",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 24000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 18000, "base_latency": 10, "position": {"x": 380, "y": 240}},
+          {"id": "app", "type": "Server", "name": "App Server", "capacity": 14000, "base_latency": 25, "position": {"x": 540, "y": 240}},
+          {"id": "cache", "type": "Cache", "name": "Seat Cache", "capacity": 20000, "base_latency": 5, "position": {"x": 700, "y": 180}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "capacity": 12000, "base_latency": 75, "position": {"x": 860, "y": 240}},
+          {"id": "db-replica", "type": "Database", "name": "Read Replica", "capacity": 14000, "base_latency": 70, "position": {"x": 860, "y": 360}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app"},
+          {"source": "app", "target": "cache"},
+          {"source": "cache", "target": "db-primary"},
+          {"source": "cache", "target": "db-replica"}
+        ]
+      }
+    },
+    {
+      "stage": 3,
+      "title": "Production Scale",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 30000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 22000, "base_latency": 10, "position": {"x": 380, "y": 240}},
+          {"id": "app-a", "type": "Server", "name": "App Server A", "capacity": 16000, "base_latency": 22, "position": {"x": 540, "y": 170}},
+          {"id": "app-b", "type": "Server", "name": "App Server B", "capacity": 16000, "base_latency": 22, "position": {"x": 540, "y": 320}},
+          {"id": "cache", "type": "Cache", "name": "Seat Cache", "capacity": 24000, "base_latency": 5, "position": {"x": 720, "y": 120}},
+          {"id": "locking", "type": "InventoryLocking", "name": "Inventory Locking", "capacity": 12000, "base_latency": 12, "position": {"x": 720, "y": 260}},
+          {"id": "payment", "type": "PaymentGateway", "name": "Payment Gateway", "capacity": 12000, "base_latency": 20, "position": {"x": 720, "y": 400}},
+          {"id": "queue", "type": "Queue", "name": "Booking Queue", "capacity": 18000, "base_latency": 12, "position": {"x": 900, "y": 400}},
+          {"id": "worker", "type": "Worker", "name": "Booking Worker", "capacity": 14000, "base_latency": 18, "position": {"x": 1060, "y": 400}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "capacity": 15000, "base_latency": 80, "position": {"x": 980, "y": 200}},
+          {"id": "db-replica", "type": "Database", "name": "Read Replica", "capacity": 15000, "base_latency": 75, "position": {"x": 980, "y": 60}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app-a"},
+          {"source": "lb", "target": "app-b"},
+          {"source": "app-a", "target": "cache"},
+          {"source": "app-b", "target": "cache"},
+          {"source": "cache", "target": "db-primary"},
+          {"source": "cache", "target": "db-replica"},
+          {"source": "app-a", "target": "locking"},
+          {"source": "app-b", "target": "locking"},
+          {"source": "locking", "target": "db-primary"},
+          {"source": "app-a", "target": "payment"},
+          {"source": "app-b", "target": "payment"},
+          {"source": "payment", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "db-primary"}
+        ]
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "question": "How do you prevent double booking during peak traffic?",
+      "answer": "Use inventory locking with a short TTL and idempotent booking writes to ensure only one transaction commits per seat.",
+      "topics": ["concurrency", "distributed locks", "idempotency"]
+    },
+    {
+      "question": "How do you handle cache invalidation for seat availability?",
+      "answer": "Invalidate or update cache entries on confirmed bookings and use write-through for reads to avoid stale availability.",
+      "topics": ["cache invalidation", "consistency"]
+    },
+    {
+      "question": "How do you mitigate replication lag issues?",
+      "answer": "Route critical reads to the primary and expose lag metrics to fall back when replicas fall behind.",
+      "topics": ["replication", "consistency", "monitoring"]
+    }
+  ],
+  "design_notes": {
+    "cache_hit_ratio": "0.7",
+    "writes": "Seat reservations are write-heavy during bursts",
+    "payments": "Async payment confirmation with retries"
+  }
+}

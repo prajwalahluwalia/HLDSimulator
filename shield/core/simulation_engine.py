@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Dict, List, Optional, Tuple
 
 
@@ -25,10 +25,23 @@ def simulate(
     ordered_nodes: Optional[List[Node]] = None,
 ) -> Tuple[Dict[str, object], List[Dict[str, object]]]:
     nodes = ordered_nodes or graph.get("nodes", []) or []
+    if not nodes:
+        return {
+            "incoming_rps": 0,
+            "throughput": 0,
+            "total_latency": 0,
+            "total_error_rate": 0,
+            "bottleneck_node_id": None,
+            "bottleneck_component": "",
+            "bottleneck_components": [],
+            "bottleneck_component_ids": [],
+        }, []
+
     node_map = {node.get("id"): node for node in nodes if node.get("id")}
     edges = graph.get("edges", []) or []
 
     adjacency = defaultdict(list)
+    parents = defaultdict(list)
     indegree = defaultdict(int)
     outdegree = defaultdict(int)
 
@@ -40,6 +53,7 @@ def simulate(
         if source == target:
             continue
         adjacency[source].append(target)
+        parents[target].append(source)
         indegree[target] += 1
         outdegree[source] += 1
 
@@ -47,18 +61,14 @@ def simulate(
         indegree.setdefault(node_id, 0)
         outdegree.setdefault(node_id, 0)
 
-    if not nodes:
-        return {"incoming_rps": 0, "throughput": 0, "total_latency": 0, "error_rate": 0, "bottleneck_component": ""}, []
-
     if ordered_nodes:
         ordered_ids = [node.get("id") for node in ordered_nodes if node.get("id")]
     else:
-        entry_nodes = [node_id for node_id, deg in indegree.items() if deg == 0]
-        queue = entry_nodes[:1]
+        queue = deque([node_id for node_id in node_map if indegree[node_id] == 0])
         ordered_ids = []
         indegree_work = dict(indegree)
         while queue:
-            node_id = queue.pop(0)
+            node_id = queue.popleft()
             ordered_ids.append(node_id)
             for neighbor in adjacency.get(node_id, []):
                 indegree_work[neighbor] -= 1
@@ -71,121 +81,130 @@ def simulate(
 
     number_of_users = float(traffic_profile.get("number_of_users", 0))
     requests_per_user = float(traffic_profile.get("requests_per_user", 0))
-    incoming_rps = number_of_users * requests_per_user
+    root_rps = number_of_users * requests_per_user
 
     incoming_rps_map = {node_id: 0.0 for node_id in node_map}
-    entry_candidates = [node_id for node_id, deg in indegree.items() if deg == 0]
-    entry_node_id = entry_candidates[0] if entry_candidates else ordered_ids[0]
-    incoming_rps_map[entry_node_id] = incoming_rps
-
-    levels: Dict[str, int] = {entry_node_id: 0}
-
-    for node_id in ordered_ids:
-        node_rps = incoming_rps_map.get(node_id, 0.0)
-        targets = adjacency.get(node_id, [])
-        if targets:
-            capacities = []
-            for target in targets:
-                config = node_map.get(target, {}).get("config", {}) if node_map.get(target) else {}
-                capacity = float(config.get("capacity", 0))
-                capacities.append(max(capacity, 0.0))
-            total_capacity = sum(capacities)
-            for target, capacity in zip(targets, capacities):
-                if node_rps <= 0:
-                    share = 0.0
-                elif total_capacity > 0:
-                    share = node_rps * (capacity / total_capacity)
-                else:
-                    share = node_rps / len(targets)
-                incoming_rps_map[target] = incoming_rps_map.get(target, 0.0) + share
-                levels[target] = max(levels.get(target, 0), levels.get(node_id, 0) + 1)
-
-    component_nodes = [node for node in ordered_nodes if node.get("type") != "User"]
+    effective_rps_map = {node_id: 0.0 for node_id in node_map}
+    node_levels: Dict[str, int] = {}
     node_metrics: List[Dict[str, object]] = []
 
-    total_latency = 0.0
-    throughput_candidates: List[float] = []
+    entry_nodes = [node_id for node_id, deg in indegree.items() if deg == 0]
+    entry_node_id = entry_nodes[0] if entry_nodes else ordered_ids[0]
+    incoming_rps_map[entry_node_id] = root_rps
+
     max_utilization = -1.0
-    bottleneck_component = ""
+    max_overload_utilization = -1.0
+    bottleneck_node_ids: List[str] = []
     bottleneck_components: List[str] = []
-    bottleneck_component_ids: List[str] = []
-    max_error_rate = 0.0
 
-    level_latencies: Dict[int, List[Tuple[float, float]]] = defaultdict(list)
-    level_capacities: Dict[int, float] = defaultdict(float)
-
-    for node in component_nodes:
+    for node_id in ordered_ids:
+        node = node_map[node_id]
+        node_type = str(node.get("type", "Unknown"))
+        node_type_key = node_type.lower().replace("_", "").replace(" ", "")
+        is_load_balancer = node_type_key == "loadbalancer"
         config = node.get("config", {}) or {}
         capacity = float(config.get("capacity", 0))
         base_latency = float(config.get("base_latency", 0))
-        component_type = node.get("type", "Unknown")
-        node_id = node.get("id")
-        node_rps = incoming_rps_map.get(node_id, 0.0)
 
-        if capacity > 0:
-            utilization = node_rps / capacity if capacity else float("inf")
+        parent_levels = [node_levels[parent] for parent in parents.get(node_id, []) if parent in node_levels]
+        node_levels[node_id] = max(parent_levels, default=-1) + 1
+
+        incoming_rps = incoming_rps_map.get(node_id, 0.0)
+        if node_type == "User":
+            effective_rps = incoming_rps
+            utilization = 0.0
+            overflow = 0.0
+            latency = 0.0
         else:
-            utilization = float("inf")
+            utilization = incoming_rps / capacity if capacity > 0 else (float("inf") if incoming_rps > 0 else 0.0)
+            effective_rps = min(incoming_rps, capacity) if capacity > 0 else 0.0
+            overflow = max(0.0, incoming_rps - capacity)
+            if utilization <= 1:
+                latency = base_latency
+            else:
+                latency = base_latency * (utilization**2)
 
-        if utilization <= 1:
-            effective_latency = base_latency
-            error_rate = 0.0
-            status = "healthy"
-        else:
-            overflow_ratio = utilization
-            effective_latency = base_latency * (overflow_ratio**2)
-            error_rate = (
-                (node_rps - capacity) / node_rps if node_rps > 0 else 0.0
-            )
-            status = "overloaded"
+        effective_rps_map[node_id] = effective_rps
 
-        node_level = levels.get(node_id, 0)
-        if node_rps > 0:
-            level_latencies[node_level].append((effective_latency, node_rps))
-        if capacity > 0:
-            level_capacities[node_level] += capacity
+        if node_type != "User":
+            if utilization > max_utilization:
+                max_utilization = utilization
+                bottleneck_node_ids = [node_id]
+                bottleneck_components = [node_type]
+            elif utilization == max_utilization:
+                bottleneck_node_ids.append(node_id)
+                bottleneck_components.append(node_type)
 
-        if utilization > max_utilization:
-            max_utilization = utilization
-            bottleneck_component = component_type
-            bottleneck_components = [component_type]
-            bottleneck_component_ids = [node_id] if node_id else []
-        elif utilization == max_utilization:
-            bottleneck_components.append(component_type)
-            if node_id:
-                bottleneck_component_ids.append(node_id)
-
-        max_error_rate = max(max_error_rate, error_rate)
+            if utilization > 1:
+                if utilization > max_overload_utilization:
+                    max_overload_utilization = utilization
+                    bottleneck_node_ids = [node_id]
+                    bottleneck_components = [node_type]
+                elif utilization == max_overload_utilization:
+                    bottleneck_node_ids.append(node_id)
+                    bottleneck_components.append(node_type)
 
         node_metrics.append(
             {
                 "component_id": node_id,
-                "component_type": component_type,
+                "component_type": node_type,
+                "incoming_rps": round(incoming_rps, 3),
+                "effective_rps": round(effective_rps, 3),
                 "utilization": round(utilization, 3) if utilization != float("inf") else None,
-                "latency_contribution": round(effective_latency, 3),
-                "status": status,
+                "overflow": round(overflow, 3),
+                "latency": round(latency, 3),
+                "latency_contribution": round(latency, 3),
+                "status": "overloaded" if utilization > 1 else "healthy",
             }
         )
 
-    for level, values in level_latencies.items():
-        if level == 0:
+        targets = adjacency.get(node_id, [])
+        if not targets or effective_rps <= 0:
             continue
-        total_level_rps = sum(weight for _, weight in values)
-        if total_level_rps > 0:
-            total_latency += sum(latency * (weight / total_level_rps) for latency, weight in values)
 
-    if level_capacities:
-        throughput_candidates = [cap for level, cap in level_capacities.items() if level != 0]
-    throughput = min(throughput_candidates) if throughput_candidates else 0.0
+        algorithm = str(config.get("algorithm", "round_robin")).lower() if is_load_balancer else "round_robin"
+        weights: List[float] = []
+        if algorithm == "least_capacity":
+            for target in targets:
+                target_config = node_map.get(target, {}).get("config", {}) if node_map.get(target) else {}
+                weights.append(max(float(target_config.get("capacity", 0)), 0.0))
+        elif algorithm == "weighted_round_robin":
+            for target in targets:
+                target_config = node_map.get(target, {}).get("config", {}) if node_map.get(target) else {}
+                weights.append(max(float(target_config.get("weight", 1)), 0.0))
+        else:
+            weights = [1.0 for _ in targets]
+
+        total_weight = sum(weights)
+        for target, weight in zip(targets, weights):
+            share = effective_rps / len(targets) if total_weight == 0 else effective_rps * (weight / total_weight)
+            incoming_rps_map[target] = incoming_rps_map.get(target, 0.0) + share
+
+    level_latencies: Dict[int, float] = defaultdict(float)
+    for metric in node_metrics:
+        node_id = metric["component_id"]
+        node_type = metric["component_type"]
+        if node_type == "User":
+            continue
+        level = node_levels.get(node_id, 0)
+        level_latencies[level] = max(level_latencies[level], float(metric["latency"]))
+
+    total_latency = sum(level_latencies.values())
+
+    sink_nodes = [node_id for node_id, deg in outdegree.items() if deg == 0 and node_map[node_id].get("type") != "User"]
+    throughput = sum(effective_rps_map.get(node_id, 0.0) for node_id in sink_nodes)
+    total_error_rate = (root_rps - throughput) / root_rps if root_rps > 0 else 0.0
 
     performance = {
-        "incoming_rps": int(incoming_rps),
+        "incoming_rps": int(root_rps),
         "throughput": int(throughput),
         "total_latency": round(total_latency, 3),
-        "error_rate": round(max_error_rate, 3),
-        "bottleneck_component": bottleneck_component,
+        "total_error_rate": round(total_error_rate, 3),
+        "error_rate": round(total_error_rate, 3),
+        "bottleneck_node_id": bottleneck_node_ids[0] if bottleneck_node_ids else None,
+        "bottleneck_component": bottleneck_components[0] if bottleneck_components else "",
         "bottleneck_components": bottleneck_components,
-        "bottleneck_component_ids": bottleneck_component_ids,
+        "bottleneck_component_ids": bottleneck_node_ids,
     }
 
     return performance, node_metrics
