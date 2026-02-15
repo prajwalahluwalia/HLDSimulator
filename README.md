@@ -18,6 +18,9 @@ The app is located in `shield/app.py` and can be started as a module.
 - Core logic lives in `shield/core` and is testable independently of Flask.
 - Graph validation enforces a single-entry, single-exit, linear path with no cycles.
 
+## Documentation
+- `docs/architecture-and-validation.md` covers validator rules, simulation, graph model, and UI features.
+
 ## Project structure
 ```
 shield/
@@ -33,3 +36,20 @@ shield/
     js/
     css/
 ```
+
+
+Create new workspace
+
+Select preset
+
+Save changes
+
+Reload page
+
+Continue editing
+
+Rename
+
+Duplicate
+
+Delete

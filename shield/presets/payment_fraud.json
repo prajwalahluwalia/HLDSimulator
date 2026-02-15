@@ -1,7 +1,9 @@
 {
+  "id": "payment_fraud",
   "name": "Payment Fraud Detection",
   "description": "Real-time fraud detection with ML inference, feature store, and event streaming.",
-  "traffic": {
+  "difficulty": "Advanced",
+  "traffic_profile": {
     "users": 12000,
     "requests_per_user": 2
   },
@@ -9,13 +11,14 @@
     {
       "stage": 1,
       "title": "Rule-based Checks",
+      "learning_goal": "Start with deterministic rules before introducing ML models.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "gateway", "type": "APIGateway", "name": "API Gateway", "capacity": 14000, "base_latency": 10, "position": {"x": 240, "y": 220}},
-          {"id": "txn", "type": "TransactionService", "name": "Transaction Service", "capacity": 12000, "base_latency": 18, "position": {"x": 420, "y": 220}},
-          {"id": "rules", "type": "RuleEngine", "name": "Rule Engine", "capacity": 10000, "base_latency": 15, "position": {"x": 600, "y": 220}},
-          {"id": "db", "type": "Database", "name": "Transaction DB", "capacity": 12000, "base_latency": 70, "position": {"x": 780, "y": 220}}
+          {"id": "user", "type": "User", "description": "Cardholders initiating payments.", "position": {"x": 80, "y": 220}},
+          {"id": "gateway", "type": "APIGateway", "name": "API Gateway", "description": "Receives payment requests and enforces auth.", "capacity": 14000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "txn", "type": "TransactionService", "name": "Transaction Service", "description": "Normalizes and scores transactions.", "capacity": 12000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "rules", "type": "RuleEngine", "name": "Rule Engine", "description": "Applies deterministic fraud rules.", "capacity": 10000, "base_latency": 15, "position": {"x": 600, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Transaction DB", "description": "Stores transaction records and outcomes.", "capacity": 12000, "base_latency": 70, "position": {"x": 780, "y": 220}}
         ],
         "edges": [
           {"source": "user", "target": "gateway"},
@@ -28,15 +31,16 @@
     {
       "stage": 2,
       "title": "Add Feature Store",
+      "learning_goal": "Introduce ML inference backed by a feature store.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "gateway", "type": "APIGateway", "name": "API Gateway", "capacity": 16000, "base_latency": 10, "position": {"x": 240, "y": 220}},
-          {"id": "txn", "type": "TransactionService", "name": "Transaction Service", "capacity": 14000, "base_latency": 18, "position": {"x": 420, "y": 220}},
-          {"id": "ml", "type": "MLInferenceService", "name": "ML Inference", "capacity": 12000, "base_latency": 22, "position": {"x": 600, "y": 160}},
-          {"id": "rules", "type": "RuleEngine", "name": "Rule Engine", "capacity": 12000, "base_latency": 15, "position": {"x": 600, "y": 300}},
-          {"id": "feature", "type": "FeatureStore", "name": "Feature Store", "capacity": 14000, "base_latency": 12, "position": {"x": 780, "y": 120}},
-          {"id": "db", "type": "Database", "name": "Transaction DB", "capacity": 14000, "base_latency": 70, "position": {"x": 780, "y": 260}}
+          {"id": "user", "type": "User", "description": "Cardholders initiating payments.", "position": {"x": 80, "y": 220}},
+          {"id": "gateway", "type": "APIGateway", "name": "API Gateway", "description": "Receives payment requests and enforces auth.", "capacity": 16000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "txn", "type": "TransactionService", "name": "Transaction Service", "description": "Normalizes and scores transactions.", "capacity": 14000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "ml", "type": "MLInferenceService", "name": "ML Inference", "description": "Scores transactions using ML models.", "capacity": 12000, "base_latency": 22, "position": {"x": 600, "y": 160}},
+          {"id": "rules", "type": "RuleEngine", "name": "Rule Engine", "description": "Applies deterministic fraud rules.", "capacity": 12000, "base_latency": 15, "position": {"x": 600, "y": 300}},
+          {"id": "feature", "type": "FeatureStore", "name": "Feature Store", "description": "Serves real-time features for scoring.", "capacity": 14000, "base_latency": 12, "position": {"x": 780, "y": 120}},
+          {"id": "db", "type": "Database", "name": "Transaction DB", "description": "Stores transaction records and outcomes.", "capacity": 14000, "base_latency": 70, "position": {"x": 780, "y": 260}}
         ],
         "edges": [
           {"source": "user", "target": "gateway"},
@@ -51,18 +55,19 @@
     {
       "stage": 3,
       "title": "Streaming + Analytics",
+      "learning_goal": "Add streaming analytics for monitoring and model feedback loops.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "gateway", "type": "APIGateway", "name": "API Gateway", "capacity": 18000, "base_latency": 10, "position": {"x": 240, "y": 220}},
-          {"id": "txn", "type": "TransactionService", "name": "Transaction Service", "capacity": 16000, "base_latency": 18, "position": {"x": 420, "y": 220}},
-          {"id": "ml", "type": "MLInferenceService", "name": "ML Inference", "capacity": 14000, "base_latency": 22, "position": {"x": 600, "y": 140}},
-          {"id": "rules", "type": "RuleEngine", "name": "Rule Engine", "capacity": 14000, "base_latency": 15, "position": {"x": 600, "y": 300}},
-          {"id": "feature", "type": "FeatureStore", "name": "Feature Store", "capacity": 16000, "base_latency": 12, "position": {"x": 780, "y": 100}},
-          {"id": "stream", "type": "EventStream", "name": "Event Stream", "capacity": 18000, "base_latency": 10, "position": {"x": 780, "y": 320}},
-          {"id": "worker", "type": "Worker", "name": "Stream Worker", "capacity": 14000, "base_latency": 16, "position": {"x": 960, "y": 320}},
-          {"id": "analytics", "type": "Database", "name": "Analytics DB", "capacity": 18000, "base_latency": 60, "position": {"x": 1140, "y": 320}},
-          {"id": "db", "type": "Database", "name": "Transaction DB", "capacity": 16000, "base_latency": 70, "position": {"x": 960, "y": 200}}
+          {"id": "user", "type": "User", "description": "Cardholders initiating payments.", "position": {"x": 80, "y": 220}},
+          {"id": "gateway", "type": "APIGateway", "name": "API Gateway", "description": "Receives payment requests and enforces auth.", "capacity": 18000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "txn", "type": "TransactionService", "name": "Transaction Service", "description": "Normalizes and scores transactions.", "capacity": 16000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "ml", "type": "MLInferenceService", "name": "ML Inference", "description": "Scores transactions using ML models.", "capacity": 14000, "base_latency": 22, "position": {"x": 600, "y": 140}},
+          {"id": "rules", "type": "RuleEngine", "name": "Rule Engine", "description": "Applies deterministic fraud rules.", "capacity": 14000, "base_latency": 15, "position": {"x": 600, "y": 300}},
+          {"id": "feature", "type": "FeatureStore", "name": "Feature Store", "description": "Serves real-time features for scoring.", "capacity": 16000, "base_latency": 12, "position": {"x": 780, "y": 100}},
+          {"id": "stream", "type": "EventStream", "name": "Event Stream", "description": "Streams transactions for analytics and training.", "capacity": 18000, "base_latency": 10, "position": {"x": 780, "y": 320}},
+          {"id": "worker", "type": "Worker", "name": "Stream Worker", "description": "Processes stream events into analytics.", "capacity": 14000, "base_latency": 16, "position": {"x": 960, "y": 320}},
+          {"id": "analytics", "type": "Database", "name": "Analytics DB", "description": "Stores fraud analytics and model feedback.", "capacity": 18000, "base_latency": 60, "position": {"x": 1140, "y": 320}},
+          {"id": "db", "type": "Database", "name": "Transaction DB", "description": "Stores transaction records and outcomes.", "capacity": 16000, "base_latency": 70, "position": {"x": 960, "y": 200}}
         ],
         "edges": [
           {"source": "user", "target": "gateway"},
@@ -80,15 +85,71 @@
   ],
   "faqs": [
     {
+      "id": "fraud-faq-001",
       "question": "How do you reduce false positives in fraud detection?",
       "answer": "Combine rules with ML scores and calibrate thresholds using offline evaluation data.",
-      "topics": ["ML", "thresholding", "accuracy"]
+      "difficulty": "Advanced",
+      "topics": ["cap-theorem", "async-vs-sync"],
+      "stage": null,
+      "related_components": ["MLInferenceService", "RuleEngine"],
+      "follow_up_questions": [
+        "How would you tune thresholds during spikes?"
+      ]
     },
     {
+      "id": "fraud-faq-002",
       "question": "How do you handle feature store consistency?",
       "answer": "Use batch + streaming updates and accept eventual consistency for real-time scoring.",
-      "topics": ["feature store", "eventual consistency"]
+      "difficulty": "Advanced",
+      "topics": ["eventual-consistency", "async-vs-sync"],
+      "stage": null,
+      "related_components": ["FeatureStore"],
+      "follow_up_questions": [
+        "What features require stronger consistency?"
+      ]
+    },
+    {
+      "id": "fraud-stage-1-001",
+      "question": "Why start with a rule engine before ML?",
+      "answer": "Rules provide immediate coverage and clear explanations while ML models mature.",
+      "difficulty": "Intermediate",
+      "topics": ["async-vs-sync"],
+      "stage": 1,
+      "related_components": ["RuleEngine"],
+      "follow_up_questions": [
+        "Which fraud patterns are best modeled as rules?"
+      ]
+    },
+    {
+      "id": "fraud-stage-2-001",
+      "question": "How does the ML inference tier stay low latency?",
+      "answer": "Keep feature reads local and precompute heavy features to avoid synchronous lookups.",
+      "difficulty": "Advanced",
+      "topics": ["threading-model", "async-vs-sync"],
+      "stage": 2,
+      "related_components": ["MLInferenceService", "FeatureStore"],
+      "follow_up_questions": [
+        "How do you cache model features safely?"
+      ]
+    },
+    {
+      "id": "fraud-stage-3-001",
+      "question": "Why stream transactions to analytics?",
+      "answer": "Streams power real-time monitoring and offline model retraining without blocking scoring.",
+      "difficulty": "Advanced",
+      "topics": ["async-vs-sync", "backpressure"],
+      "stage": 3,
+      "related_components": ["EventStream", "Worker"],
+      "follow_up_questions": [
+        "What happens if the stream falls behind?"
+      ]
     }
+  ],
+  "concepts": [
+    "ML inference",
+    "Feature stores",
+    "Streaming analytics",
+    "Fraud scoring"
   ],
   "design_notes": {
     "latency": "Real-time scoring under 200ms",

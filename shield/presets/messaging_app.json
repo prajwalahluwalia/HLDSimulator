@@ -1,7 +1,9 @@
 {
+  "id": "messaging_app",
   "name": "Messaging App",
   "description": "WhatsApp-like messaging system with queues, storage, and notifications.",
-  "traffic": {
+  "difficulty": "Intermediate",
+  "traffic_profile": {
     "users": 15000,
     "requests_per_user": 5
   },
@@ -9,12 +11,13 @@
     {
       "stage": 1,
       "title": "Chat Core",
+      "learning_goal": "Deliver the core chat flow with a gateway and message store.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "gateway", "type": "Gateway", "name": "Gateway", "capacity": 20000, "base_latency": 10, "position": {"x": 240, "y": 240}},
-          {"id": "chat", "type": "ChatServer", "name": "Chat Server", "capacity": 18000, "base_latency": 18, "position": {"x": 420, "y": 240}},
-          {"id": "store", "type": "MessageStore", "name": "Message Store", "capacity": 16000, "base_latency": 40, "position": {"x": 620, "y": 240}}
+          {"id": "user", "type": "User", "description": "Senders and recipients in conversations.", "position": {"x": 80, "y": 240}},
+          {"id": "gateway", "type": "Gateway", "name": "Gateway", "description": "Handles auth and routes chat connections.", "capacity": 20000, "base_latency": 10, "position": {"x": 240, "y": 240}},
+          {"id": "chat", "type": "ChatServer", "name": "Chat Server", "description": "Manages real-time messaging sessions.", "capacity": 18000, "base_latency": 18, "position": {"x": 420, "y": 240}},
+          {"id": "store", "type": "MessageStore", "name": "Message Store", "description": "Stores chat history and message metadata.", "capacity": 16000, "base_latency": 40, "position": {"x": 620, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "gateway"},
@@ -26,14 +29,15 @@
     {
       "stage": 2,
       "title": "Add Queue + Worker",
+      "learning_goal": "Buffer writes and handle fan-out with queues and workers.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "gateway", "type": "Gateway", "name": "Gateway", "capacity": 22000, "base_latency": 10, "position": {"x": 240, "y": 240}},
-          {"id": "chat", "type": "ChatServer", "name": "Chat Server", "capacity": 20000, "base_latency": 18, "position": {"x": 420, "y": 240}},
-          {"id": "queue", "type": "Queue", "name": "Message Queue", "capacity": 20000, "base_latency": 10, "position": {"x": 620, "y": 240}},
-          {"id": "worker", "type": "Worker", "name": "Delivery Worker", "capacity": 18000, "base_latency": 14, "position": {"x": 820, "y": 240}},
-          {"id": "store", "type": "MessageStore", "name": "Message Store", "capacity": 18000, "base_latency": 40, "position": {"x": 1020, "y": 240}}
+          {"id": "user", "type": "User", "description": "Senders and recipients in conversations.", "position": {"x": 80, "y": 240}},
+          {"id": "gateway", "type": "Gateway", "name": "Gateway", "description": "Handles auth and routes chat connections.", "capacity": 22000, "base_latency": 10, "position": {"x": 240, "y": 240}},
+          {"id": "chat", "type": "ChatServer", "name": "Chat Server", "description": "Manages real-time messaging sessions.", "capacity": 20000, "base_latency": 18, "position": {"x": 420, "y": 240}},
+          {"id": "queue", "type": "Queue", "name": "Message Queue", "description": "Buffers messages for async fan-out.", "capacity": 20000, "base_latency": 10, "position": {"x": 620, "y": 240}},
+          {"id": "worker", "type": "Worker", "name": "Delivery Worker", "description": "Delivers queued messages to recipients.", "capacity": 18000, "base_latency": 14, "position": {"x": 820, "y": 240}},
+          {"id": "store", "type": "MessageStore", "name": "Message Store", "description": "Stores chat history and message metadata.", "capacity": 18000, "base_latency": 40, "position": {"x": 1020, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "gateway"},
@@ -47,16 +51,17 @@
     {
       "stage": 3,
       "title": "Media + Notifications",
+      "learning_goal": "Split media storage and add notifications for user engagement.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "gateway", "type": "Gateway", "name": "Gateway", "capacity": 24000, "base_latency": 10, "position": {"x": 240, "y": 240}},
-          {"id": "chat", "type": "ChatServer", "name": "Chat Server", "capacity": 22000, "base_latency": 18, "position": {"x": 420, "y": 240}},
-          {"id": "queue", "type": "Queue", "name": "Message Queue", "capacity": 22000, "base_latency": 10, "position": {"x": 620, "y": 240}},
-          {"id": "worker", "type": "Worker", "name": "Delivery Worker", "capacity": 20000, "base_latency": 14, "position": {"x": 820, "y": 240}},
-          {"id": "store", "type": "MessageStore", "name": "Message Store", "capacity": 20000, "base_latency": 40, "position": {"x": 1020, "y": 180}},
-          {"id": "media", "type": "MediaStore", "name": "Media Store", "capacity": 18000, "base_latency": 45, "position": {"x": 1020, "y": 320}},
-          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "capacity": 16000, "base_latency": 15, "position": {"x": 820, "y": 100}}
+          {"id": "user", "type": "User", "description": "Senders and recipients in conversations.", "position": {"x": 80, "y": 240}},
+          {"id": "gateway", "type": "Gateway", "name": "Gateway", "description": "Handles auth and routes chat connections.", "capacity": 24000, "base_latency": 10, "position": {"x": 240, "y": 240}},
+          {"id": "chat", "type": "ChatServer", "name": "Chat Server", "description": "Manages real-time messaging sessions.", "capacity": 22000, "base_latency": 18, "position": {"x": 420, "y": 240}},
+          {"id": "queue", "type": "Queue", "name": "Message Queue", "description": "Buffers messages for async fan-out.", "capacity": 22000, "base_latency": 10, "position": {"x": 620, "y": 240}},
+          {"id": "worker", "type": "Worker", "name": "Delivery Worker", "description": "Delivers queued messages to recipients.", "capacity": 20000, "base_latency": 14, "position": {"x": 820, "y": 240}},
+          {"id": "store", "type": "MessageStore", "name": "Message Store", "description": "Stores chat history and message metadata.", "capacity": 20000, "base_latency": 40, "position": {"x": 1020, "y": 180}},
+          {"id": "media", "type": "MediaStore", "name": "Media Store", "description": "Stores images, audio, and video payloads.", "capacity": 18000, "base_latency": 45, "position": {"x": 1020, "y": 320}},
+          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "description": "Sends push notifications for new messages.", "capacity": 16000, "base_latency": 15, "position": {"x": 820, "y": 100}}
         ],
         "edges": [
           {"source": "user", "target": "gateway"},
@@ -72,15 +77,71 @@
   ],
   "faqs": [
     {
+      "id": "msg-faq-001",
       "question": "How do you ensure ordering of messages?",
       "answer": "Use per-conversation partitions and sequence numbers in the message store.",
-      "topics": ["ordering", "partitioning"]
+      "difficulty": "Intermediate",
+      "topics": ["sharding", "threading-model"],
+      "stage": null,
+      "related_components": ["MessageStore", "Queue"],
+      "follow_up_questions": [
+        "How would you handle ordering across devices?"
+      ]
     },
     {
+      "id": "msg-faq-002",
       "question": "How do you handle write amplification in message storage?",
       "answer": "Use append-only logs and periodic compaction to reduce write amplification.",
-      "topics": ["write amplification", "storage"]
+      "difficulty": "Advanced",
+      "topics": ["write-amplification", "async-vs-sync"],
+      "stage": null,
+      "related_components": ["MessageStore"],
+      "follow_up_questions": [
+        "When would you trigger compaction?"
+      ]
+    },
+    {
+      "id": "msg-stage-1-001",
+      "question": "Why place a gateway in front of chat servers?",
+      "answer": "The gateway handles authentication, rate limiting, and connection routing.",
+      "difficulty": "Beginner",
+      "topics": ["backpressure"],
+      "stage": 1,
+      "related_components": ["Gateway", "ChatServer"],
+      "follow_up_questions": [
+        "How do you scale gateways for WebSocket traffic?"
+      ]
+    },
+    {
+      "id": "msg-stage-2-001",
+      "question": "What does the delivery worker enable?",
+      "answer": "Workers fan out messages asynchronously and allow retries without blocking chat servers.",
+      "difficulty": "Intermediate",
+      "topics": ["async-vs-sync", "backpressure"],
+      "stage": 2,
+      "related_components": ["Queue", "Worker"],
+      "follow_up_questions": [
+        "How do you deduplicate deliveries?"
+      ]
+    },
+    {
+      "id": "msg-stage-3-001",
+      "question": "Why split media storage from message storage?",
+      "answer": "Media has different access patterns and benefits from dedicated storage and CDN caching.",
+      "difficulty": "Intermediate",
+      "topics": ["async-vs-sync", "cache-invalidation"],
+      "stage": 3,
+      "related_components": ["MediaStore", "MessageStore"],
+      "follow_up_questions": [
+        "How would you handle large media uploads?"
+      ]
     }
+  ],
+  "concepts": [
+    "Message queues",
+    "Fan-out delivery",
+    "Media storage",
+    "Notification pipelines"
   ],
   "design_notes": {
     "delivery": "At-least-once delivery with idempotent clients",

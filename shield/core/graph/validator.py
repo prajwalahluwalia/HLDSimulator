@@ -37,6 +37,7 @@ TYPE_ALIASES = {
     "database": "Database",
     "messagestore": "MessageStore",
     "mediastore": "MediaStore",
+    "services": "Services",
     "searchindex": "SearchIndex",
     "queue": "Queue",
     "eventstream": "EventStream",
@@ -69,6 +70,7 @@ LAYER_MAP = {
     "PaymentGateway": "Compute",
     "InventoryLocking": "Compute",
     "ChatServer": "Compute",
+    "Services": "Compute",
     "Cache": "DataAccess",
     "Database": "Storage",
     "FeatureStore": "Storage",
@@ -85,7 +87,7 @@ LAYER_MAP = {
 
 ALLOWED_TRANSITIONS = {
     "External": {"Edge"},
-    "Edge": {"Compute"},
+    "Edge": {"Edge", "Compute"},
     "Compute": {"Compute", "DataAccess", "Storage", "Async", "Notification"},
     "DataAccess": {"Storage"},
     "Storage": {"Async"},

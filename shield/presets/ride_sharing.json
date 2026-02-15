@@ -1,7 +1,9 @@
 {
+  "id": "ride_sharing",
   "name": "Ride Sharing",
   "description": "Ride sharing platform with matching, trip management, and notifications.",
-  "traffic": {
+  "difficulty": "Advanced",
+  "traffic_profile": {
     "users": 6000,
     "requests_per_user": 4
   },
@@ -9,12 +11,13 @@
     {
       "stage": 1,
       "title": "Core API",
+      "learning_goal": "Start with a gateway, matching engine, and core database.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 18000, "base_latency": 10, "position": {"x": 240, "y": 240}},
-          {"id": "match", "type": "MatchingEngine", "name": "Matching Engine", "capacity": 12000, "base_latency": 24, "position": {"x": 420, "y": 240}},
-          {"id": "db-core", "type": "Database", "name": "Core DB", "capacity": 14000, "base_latency": 70, "position": {"x": 620, "y": 240}}
+          {"id": "user", "type": "User", "description": "Riders and drivers initiating trip requests.", "position": {"x": 80, "y": 240}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "description": "Entry point that authenticates riders/drivers and routes requests.", "capacity": 18000, "base_latency": 10, "position": {"x": 240, "y": 240}},
+          {"id": "match", "type": "MatchingEngine", "name": "Matching Engine", "description": "Pairs riders with nearby drivers using geo and availability signals.", "capacity": 12000, "base_latency": 24, "position": {"x": 420, "y": 240}},
+          {"id": "db-core", "type": "Database", "name": "Core DB", "description": "Stores trips, rider profiles, and driver state.", "capacity": 14000, "base_latency": 70, "position": {"x": 620, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "api"},
@@ -26,15 +29,16 @@
     {
       "stage": 2,
       "title": "Add Trip + Location Services",
+      "learning_goal": "Split trip and location responsibilities and add caching.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 20000, "base_latency": 10, "position": {"x": 240, "y": 240}},
-          {"id": "match", "type": "MatchingEngine", "name": "Matching Engine", "capacity": 15000, "base_latency": 24, "position": {"x": 420, "y": 160}},
-          {"id": "trip", "type": "TripService", "name": "Trip Service", "capacity": 14000, "base_latency": 22, "position": {"x": 420, "y": 320}},
-          {"id": "location", "type": "LocationService", "name": "Location Service", "capacity": 16000, "base_latency": 20, "position": {"x": 600, "y": 240}},
-          {"id": "cache", "type": "Cache", "name": "Geo Cache", "capacity": 20000, "base_latency": 6, "position": {"x": 780, "y": 180}},
-          {"id": "db-core", "type": "Database", "name": "Core DB", "capacity": 16000, "base_latency": 70, "position": {"x": 960, "y": 240}}
+          {"id": "user", "type": "User", "description": "Riders and drivers initiating trip requests.", "position": {"x": 80, "y": 240}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "description": "Routes requests to matching, trip, and location services.", "capacity": 20000, "base_latency": 10, "position": {"x": 240, "y": 240}},
+          {"id": "match", "type": "MatchingEngine", "name": "Matching Engine", "description": "Matches riders to drivers based on location and supply.", "capacity": 15000, "base_latency": 24, "position": {"x": 420, "y": 160}},
+          {"id": "trip", "type": "TripService", "name": "Trip Service", "description": "Manages trip lifecycle, pricing, and state transitions.", "capacity": 14000, "base_latency": 22, "position": {"x": 420, "y": 320}},
+          {"id": "location", "type": "LocationService", "name": "Location Service", "description": "Ingests driver GPS updates and serves nearby queries.", "capacity": 16000, "base_latency": 20, "position": {"x": 600, "y": 240}},
+          {"id": "cache", "type": "Cache", "name": "Geo Cache", "description": "Caches hot location tiles for fast matching reads.", "capacity": 20000, "base_latency": 6, "position": {"x": 780, "y": 180}},
+          {"id": "db-core", "type": "Database", "name": "Core DB", "description": "Stores trips, user data, and driver state.", "capacity": 16000, "base_latency": 70, "position": {"x": 960, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "api"},
@@ -50,18 +54,19 @@
     {
       "stage": 3,
       "title": "Notifications + Async Events",
+      "learning_goal": "Introduce event streaming, workers, and notifications for user updates.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 22000, "base_latency": 10, "position": {"x": 240, "y": 240}},
-          {"id": "match", "type": "MatchingEngine", "name": "Matching Engine", "capacity": 16000, "base_latency": 24, "position": {"x": 420, "y": 160}},
-          {"id": "trip", "type": "TripService", "name": "Trip Service", "capacity": 16000, "base_latency": 22, "position": {"x": 420, "y": 320}},
-          {"id": "location", "type": "LocationService", "name": "Location Service", "capacity": 18000, "base_latency": 20, "position": {"x": 600, "y": 240}},
-          {"id": "cache", "type": "Cache", "name": "Geo Cache", "capacity": 22000, "base_latency": 6, "position": {"x": 780, "y": 180}},
-          {"id": "queue", "type": "EventStream", "name": "Event Stream", "capacity": 24000, "base_latency": 10, "position": {"x": 780, "y": 320}},
-          {"id": "worker", "type": "Worker", "name": "Event Worker", "capacity": 16000, "base_latency": 18, "position": {"x": 960, "y": 320}},
-          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "capacity": 14000, "base_latency": 15, "position": {"x": 960, "y": 120}},
-          {"id": "db-core", "type": "Database", "name": "Core DB", "capacity": 18000, "base_latency": 70, "position": {"x": 1120, "y": 240}}
+          {"id": "user", "type": "User", "description": "Riders and drivers initiating trip requests.", "position": {"x": 80, "y": 240}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "description": "Routes trip creation, updates, and ride events.", "capacity": 22000, "base_latency": 10, "position": {"x": 240, "y": 240}},
+          {"id": "match", "type": "MatchingEngine", "name": "Matching Engine", "description": "Selects best driver match using geo and supply signals.", "capacity": 16000, "base_latency": 24, "position": {"x": 420, "y": 160}},
+          {"id": "trip", "type": "TripService", "name": "Trip Service", "description": "Owns trip state and pricing lifecycle.", "capacity": 16000, "base_latency": 22, "position": {"x": 420, "y": 320}},
+          {"id": "location", "type": "LocationService", "name": "Location Service", "description": "Processes driver location updates for matching.", "capacity": 18000, "base_latency": 20, "position": {"x": 600, "y": 240}},
+          {"id": "cache", "type": "Cache", "name": "Geo Cache", "description": "Caches hot geo tiles and driver snapshots.", "capacity": 22000, "base_latency": 6, "position": {"x": 780, "y": 180}},
+          {"id": "queue", "type": "EventStream", "name": "Event Stream", "description": "Streams trip events to async consumers.", "capacity": 24000, "base_latency": 10, "position": {"x": 780, "y": 320}},
+          {"id": "worker", "type": "Worker", "name": "Event Worker", "description": "Consumes ride events for analytics and notifications.", "capacity": 16000, "base_latency": 18, "position": {"x": 960, "y": 320}},
+          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "description": "Sends rider/driver alerts via push/SMS.", "capacity": 14000, "base_latency": 15, "position": {"x": 960, "y": 120}},
+          {"id": "db-core", "type": "Database", "name": "Core DB", "description": "Stores trip records and user data.", "capacity": 18000, "base_latency": 70, "position": {"x": 1120, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "api"},
@@ -81,20 +86,86 @@
   ],
   "faqs": [
     {
+      "id": "ride-faq-001",
       "question": "How do you handle eventual consistency in driver locations?",
       "answer": "Use soft-state location caches with TTLs and tolerate small staleness while updating positions frequently.",
-      "topics": ["eventual consistency", "cache"]
+      "difficulty": "Advanced",
+      "topics": ["eventual-consistency", "cache-invalidation"],
+      "stage": null,
+      "related_components": ["Cache", "LocationService"],
+      "follow_up_questions": [
+        "How do you reconcile stale driver locations?",
+        "What TTL is acceptable for location updates?"
+      ]
     },
     {
+      "id": "ride-faq-002",
       "question": "How do you manage backpressure during surge events?",
       "answer": "Apply rate limiting at the gateway and buffer non-critical events through queues with autoscaling workers.",
-      "topics": ["backpressure", "rate limiting", "queues"]
+      "difficulty": "Advanced",
+      "topics": ["backpressure", "async-vs-sync"],
+      "stage": null,
+      "related_components": ["APIGateway", "Queue", "Worker"],
+      "follow_up_questions": [
+        "Which requests should bypass the queue?",
+        "How do you scale workers during spikes?"
+      ]
     },
     {
+      "id": "ride-faq-003",
       "question": "What sharding strategy suits trip data?",
       "answer": "Shard by city or region to keep hot ride data local and reduce cross-region latency.",
-      "topics": ["sharding", "partitioning"]
+      "difficulty": "Advanced",
+      "topics": ["sharding", "replication"],
+      "stage": null,
+      "related_components": ["Database"],
+      "follow_up_questions": [
+        "How do you handle cross-region rides?",
+        "What happens when a shard becomes hot?"
+      ]
+    },
+    {
+      "id": "ride-stage-1-001",
+      "question": "Why separate matching from the API gateway early?",
+      "answer": "Matching is latency-sensitive and benefits from isolated scaling and caching.",
+      "difficulty": "Intermediate",
+      "topics": ["threading-model"],
+      "stage": 1,
+      "related_components": ["MatchingEngine"],
+      "follow_up_questions": [
+        "How would you precompute candidate matches?"
+      ]
+    },
+    {
+      "id": "ride-stage-2-001",
+      "question": "How does the geo cache improve matching latency?",
+      "answer": "Caching nearby drivers reduces repeated database lookups for real-time location reads.",
+      "difficulty": "Intermediate",
+      "topics": ["cache-invalidation"],
+      "stage": 2,
+      "related_components": ["Cache"],
+      "follow_up_questions": [
+        "What data should never be cached?"
+      ]
+    },
+    {
+      "id": "ride-stage-3-001",
+      "question": "Why add an event stream for ride lifecycle updates?",
+      "answer": "Event streams decouple real-time ride actions from downstream analytics and notifications.",
+      "difficulty": "Advanced",
+      "topics": ["async-vs-sync", "backpressure"],
+      "stage": 3,
+      "related_components": ["EventStream", "Worker"],
+      "follow_up_questions": [
+        "How do you guarantee ordering for ride events?"
+      ]
     }
+  ],
+  "concepts": [
+    "Geo-aware matching",
+    "Event streaming",
+    "Backpressure handling",
+    "Notification fan-out"
   ],
   "design_notes": {
     "burst_profile": "Ride requests spike around peak hours",

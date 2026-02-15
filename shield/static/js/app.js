@@ -188,6 +188,7 @@ const defaults = {
   ChatServer: { name: "Chat Server", capacity: 3500, base_latency: 18 },
   MessageStore: { name: "Message Store", capacity: 3000, base_latency: 20 },
   MediaStore: { name: "Media Store", capacity: 2500, base_latency: 22 },
+  Services: { name: "Services", capacity: 2500, base_latency: 22 },
   Server: { name: "Server", capacity: 500, base_latency: 50 },
   Database: { name: "Database", capacity: 300, base_latency: 80 },
   Cache: { name: "Cache", capacity: 1200, base_latency: 5 },
@@ -229,6 +230,7 @@ const TYPE_ALIASES = {
   chatserver: "ChatServer",
   messagestore: "MessageStore",
   mediastore: "MediaStore",
+  services: "Services",
   server: "Server",
   database: "Database",
   cache: "Cache",
@@ -459,6 +461,9 @@ function buildPresetConfig(node, traffic) {
   if (!merged.name) {
     merged.name = baseConfig.name || type;
   }
+  if (merged.description === undefined) {
+    merged.description = "";
+  }
   return { type, config: merged };
 }
 
@@ -573,7 +578,7 @@ function createNode(type, x, y) {
   const node = {
     id,
     type,
-    config: { ...defaults[type] },
+    config: { ...defaults[type], description: "" },
     x,
     y,
     width: 80,
@@ -691,18 +696,19 @@ function highlightConnectSource(nodeId) {
 
 function renderInspector(node) {
   const baseFields = [
-    { key: "name", label: "Component name" },
+    { key: "name", label: "Component name", type: "text" },
+    { key: "description", label: "Description", type: "text", wide: true },
   ];
   const fields = node.type === "User"
     ? [
         ...baseFields,
-        { key: "number_of_users", label: "Number of users" },
-        { key: "requests_per_user", label: "Requests per user" },
+        { key: "number_of_users", label: "Number of users", type: "number" },
+        { key: "requests_per_user", label: "Requests per user", type: "number" },
       ]
     : [
         ...baseFields,
-        { key: "capacity", label: "Capacity (RPS)" },
-        { key: "base_latency", label: "Base latency (ms)" },
+        { key: "capacity", label: "Capacity (RPS)", type: "number" },
+        { key: "base_latency", label: "Base latency (ms)", type: "number" },
       ];
 
   inspector.innerHTML = `
@@ -713,13 +719,22 @@ function renderInspector(node) {
     <div class="inspector-fields">
       ${fields
         .map((field) => {
-          const isName = field.key === "name";
-          const inputType = isName ? "text" : "number";
-          const step = isName ? "" : "step=\"0.1\"";
-          return `
-        <label>
+          const inputType = field.type || "text";
+          const step = inputType === "number" ? "step=\"0.1\"" : "";
+          const fieldClass = field.wide ? "class=\"field-description\"" : "";
+          const value = node.config[field.key] ?? "";
+          if (field.key === "description") {
+            return `
+        <label ${fieldClass}>
           ${field.label}
-          <input type="${inputType}" ${step} data-key="${field.key}" value="${node.config[field.key] ?? ""}" />
+          <textarea data-key="${field.key}" rows="3">${value}</textarea>
+        </label>
+      `;
+          }
+          return `
+        <label ${fieldClass}>
+          ${field.label}
+          <input type="${inputType}" ${step} data-key="${field.key}" value="${value}" />
         </label>
       `;
         })
@@ -727,7 +742,7 @@ function renderInspector(node) {
     </div>
   `;
 
-  inspector.querySelectorAll("input").forEach((input) => {
+  inspector.querySelectorAll("input, textarea").forEach((input) => {
     input.addEventListener("input", (event) => {
       const key = event.target.dataset.key;
       if (key === "name") {
@@ -742,6 +757,11 @@ function renderInspector(node) {
           renderSimulationResult(state.lastSimulation);
           saveState();
         }
+        return;
+      }
+      if (key === "description") {
+        node.config[key] = event.target.value;
+        saveState();
         return;
       }
       node.config[key] = Number(event.target.value);

@@ -1,7 +1,9 @@
 {
+  "id": "rate_limiter",
   "name": "Rate Limiter System",
   "description": "Edge rate limiting with token bucket and distributed counters.",
-  "traffic": {
+  "difficulty": "Intermediate",
+  "traffic_profile": {
     "users": 8000,
     "requests_per_user": 6
   },
@@ -9,13 +11,14 @@
     {
       "stage": 1,
       "title": "Edge Token Bucket",
+      "learning_goal": "Apply a token bucket at the edge with a fast counter store.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "edge", "type": "Edge", "name": "Edge", "capacity": 20000, "base_latency": 6, "position": {"x": 240, "y": 220}},
-          {"id": "bucket", "type": "TokenBucket", "name": "Token Bucket", "capacity": 18000, "base_latency": 6, "position": {"x": 420, "y": 220}},
-          {"id": "store", "type": "Cache", "name": "Redis Counter Store", "capacity": 20000, "base_latency": 4, "position": {"x": 620, "y": 220}},
-          {"id": "db", "type": "Database", "name": "Quota DB", "capacity": 14000, "base_latency": 60, "position": {"x": 820, "y": 220}}
+          {"id": "user", "type": "User", "description": "Clients sending requests to be throttled.", "position": {"x": 80, "y": 220}},
+          {"id": "edge", "type": "Edge", "name": "Edge", "description": "Edge ingress where limits are enforced.", "capacity": 20000, "base_latency": 6, "position": {"x": 240, "y": 220}},
+          {"id": "bucket", "type": "TokenBucket", "name": "Token Bucket", "description": "Applies token bucket logic per client.", "capacity": 18000, "base_latency": 6, "position": {"x": 420, "y": 220}},
+          {"id": "store", "type": "Cache", "name": "Redis Counter Store", "description": "Stores counters for fast rate checks.", "capacity": 20000, "base_latency": 4, "position": {"x": 620, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Quota DB", "description": "Persists quotas and policy metadata.", "capacity": 14000, "base_latency": 60, "position": {"x": 820, "y": 220}}
         ],
         "edges": [
           {"source": "user", "target": "edge"},
@@ -28,16 +31,17 @@
     {
       "stage": 2,
       "title": "Distributed Sync",
+      "learning_goal": "Add distributed sync and async processing for scale.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "edge", "type": "Edge", "name": "Edge", "capacity": 22000, "base_latency": 6, "position": {"x": 240, "y": 220}},
-          {"id": "bucket", "type": "TokenBucket", "name": "Token Bucket", "capacity": 20000, "base_latency": 6, "position": {"x": 420, "y": 220}},
-          {"id": "sync", "type": "DistributedSync", "name": "Distributed Sync", "capacity": 18000, "base_latency": 10, "position": {"x": 620, "y": 140}},
-          {"id": "queue", "type": "Queue", "name": "Sync Queue", "capacity": 16000, "base_latency": 12, "position": {"x": 620, "y": 300}},
-          {"id": "worker", "type": "Worker", "name": "Sync Worker", "capacity": 14000, "base_latency": 16, "position": {"x": 800, "y": 300}},
-          {"id": "store", "type": "Cache", "name": "Redis Counter Store", "capacity": 22000, "base_latency": 4, "position": {"x": 820, "y": 220}},
-          {"id": "db", "type": "Database", "name": "Quota DB", "capacity": 16000, "base_latency": 60, "position": {"x": 980, "y": 220}}
+          {"id": "user", "type": "User", "description": "Clients sending requests to be throttled.", "position": {"x": 80, "y": 220}},
+          {"id": "edge", "type": "Edge", "name": "Edge", "description": "Edge ingress where limits are enforced.", "capacity": 22000, "base_latency": 6, "position": {"x": 240, "y": 220}},
+          {"id": "bucket", "type": "TokenBucket", "name": "Token Bucket", "description": "Applies token bucket logic per client.", "capacity": 20000, "base_latency": 6, "position": {"x": 420, "y": 220}},
+          {"id": "sync", "type": "DistributedSync", "name": "Distributed Sync", "description": "Reconciles counters across edge nodes.", "capacity": 18000, "base_latency": 10, "position": {"x": 620, "y": 140}},
+          {"id": "queue", "type": "Queue", "name": "Sync Queue", "description": "Buffers counter deltas for async sync.", "capacity": 16000, "base_latency": 12, "position": {"x": 620, "y": 300}},
+          {"id": "worker", "type": "Worker", "name": "Sync Worker", "description": "Applies sync updates to durable storage.", "capacity": 14000, "base_latency": 16, "position": {"x": 800, "y": 300}},
+          {"id": "store", "type": "Cache", "name": "Redis Counter Store", "description": "Stores counters for fast rate checks.", "capacity": 22000, "base_latency": 4, "position": {"x": 820, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Quota DB", "description": "Persists quotas and policy metadata.", "capacity": 16000, "base_latency": 60, "position": {"x": 980, "y": 220}}
         ],
         "edges": [
           {"source": "user", "target": "edge"},
@@ -54,15 +58,59 @@
   ],
   "faqs": [
     {
+      "id": "rate-faq-001",
       "question": "How do you prevent hot key issues in rate limiter counters?",
       "answer": "Shard counters by user hash and use sliding windows with probabilistic sampling.",
-      "topics": ["hot key", "partitioning"]
+      "difficulty": "Intermediate",
+      "topics": ["hot-keys", "sharding"],
+      "stage": null,
+      "related_components": ["Cache", "TokenBucket"],
+      "follow_up_questions": [
+        "How would you rebalance shards when traffic changes?"
+      ]
     },
     {
+      "id": "rate-faq-002",
       "question": "How do you handle distributed synchronization?",
       "answer": "Use async queues to reconcile counter deltas and accept minor drift with periodic sync.",
-      "topics": ["distributed locks", "eventual consistency"]
+      "difficulty": "Advanced",
+      "topics": ["distributed-locks", "eventual-consistency"],
+      "stage": null,
+      "related_components": ["DistributedSync", "Queue"],
+      "follow_up_questions": [
+        "How do you detect when counters drift too far?"
+      ]
+    },
+    {
+      "id": "rate-stage-1-001",
+      "question": "Why keep token bucket logic at the edge?",
+      "answer": "Edge placement blocks abusive traffic early and reduces downstream load.",
+      "difficulty": "Beginner",
+      "topics": ["backpressure"],
+      "stage": 1,
+      "related_components": ["Edge", "TokenBucket"],
+      "follow_up_questions": [
+        "How would you handle bursts that exceed edge limits?"
+      ]
+    },
+    {
+      "id": "rate-stage-2-001",
+      "question": "What does the sync queue solve in distributed rate limiting?",
+      "answer": "The queue smooths counter updates and lets workers reconcile state without blocking requests.",
+      "difficulty": "Intermediate",
+      "topics": ["async-vs-sync", "backpressure"],
+      "stage": 2,
+      "related_components": ["Queue", "Worker"],
+      "follow_up_questions": [
+        "How do you avoid double-counting counter updates?"
+      ]
     }
+  ],
+  "concepts": [
+    "Token bucket",
+    "Distributed counters",
+    "Async reconciliation",
+    "Edge throttling"
   ],
   "design_notes": {
     "algorithm": "Token bucket with Redis counters",

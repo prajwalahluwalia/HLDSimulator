@@ -1,21 +1,25 @@
 {
+  "id": "url_shortener",
   "name": "URL Shortener",
   "description": "Read-heavy distributed URL shortening service with caching, replication, rate limiting, async analytics, and ID generation.",
-  "traffic": {
+  "difficulty": "Intermediate",
+  "traffic_profile": {
     "users": 10000,
-    "requests_per_user": 4
+    "requests_per_user": 4,
+    "read_write_ratio": "90:10"
   },
   "stages": [
     {
       "stage": 1,
       "title": "Basic Service",
+      "learning_goal": "Deliver core shortening and redirect flows with a single app tier.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 40000, "base_latency": 5, "position": {"x": 220, "y": 240}},
-          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 28000, "base_latency": 8, "position": {"x": 380, "y": 240}},
-          {"id": "app", "type": "Server", "name": "App Server", "capacity": 20000, "base_latency": 20, "position": {"x": 540, "y": 240}},
-          {"id": "db", "type": "Database", "name": "Primary DB", "capacity": 15000, "base_latency": 80, "position": {"x": 720, "y": 240}}
+          {"id": "user", "type": "User", "description": "Creators and visitors shortening or expanding URLs.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches redirects close to users for low latency.", "capacity": 40000, "base_latency": 5, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes traffic across URL services.", "capacity": 28000, "base_latency": 8, "position": {"x": 380, "y": 240}},
+          {"id": "app", "type": "Server", "name": "App Server", "description": "Generates short codes and resolves redirects.", "capacity": 20000, "base_latency": 20, "position": {"x": 540, "y": 240}},
+          {"id": "db", "type": "Database", "name": "Primary DB", "description": "Stores short code mappings and metadata.", "capacity": 15000, "base_latency": 80, "position": {"x": 720, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "cdn"},
@@ -28,16 +32,17 @@
     {
       "stage": 2,
       "title": "Add Rate Limiting + Cache",
+      "learning_goal": "Protect the system with rate limiting and speed up reads using cache.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 45000, "base_latency": 5, "position": {"x": 220, "y": 240}},
-          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "capacity": 30000, "base_latency": 3, "position": {"x": 360, "y": 240}},
-          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 30000, "base_latency": 8, "position": {"x": 520, "y": 240}},
-          {"id": "app-1", "type": "Server", "name": "App Server A", "capacity": 22000, "base_latency": 18, "position": {"x": 680, "y": 180}},
-          {"id": "app-2", "type": "Server", "name": "App Server B", "capacity": 22000, "base_latency": 18, "position": {"x": 680, "y": 300}},
-          {"id": "cache", "type": "Cache", "name": "Redis Cache", "capacity": 28000, "base_latency": 5, "position": {"x": 860, "y": 240}},
-          {"id": "db-primary", "type": "Database", "name": "Primary DB", "capacity": 16000, "base_latency": 80, "position": {"x": 1040, "y": 240}}
+          {"id": "user", "type": "User", "description": "Creators and visitors shortening or expanding URLs.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches redirects close to users for low latency.", "capacity": 45000, "base_latency": 5, "position": {"x": 220, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "description": "Protects the service from abusive spikes.", "capacity": 30000, "base_latency": 3, "position": {"x": 360, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes traffic across URL services.", "capacity": 30000, "base_latency": 8, "position": {"x": 520, "y": 240}},
+          {"id": "app-1", "type": "Server", "name": "App Server A", "description": "Handles URL creation and redirect lookups.", "capacity": 22000, "base_latency": 18, "position": {"x": 680, "y": 180}},
+          {"id": "app-2", "type": "Server", "name": "App Server B", "description": "Secondary URL service for scale-out.", "capacity": 22000, "base_latency": 18, "position": {"x": 680, "y": 300}},
+          {"id": "cache", "type": "Cache", "name": "Redis Cache", "description": "Caches hot redirect mappings.", "capacity": 28000, "base_latency": 5, "position": {"x": 860, "y": 240}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "description": "Stores short code mappings and metadata.", "capacity": 16000, "base_latency": 80, "position": {"x": 1040, "y": 240}}
         ],
         "edges": [
           {"source": "user", "target": "cdn"},
@@ -53,23 +58,58 @@
     },
     {
       "stage": 3,
-      "title": "Full Production + Analytics",
+      "title": "Read Scaling",
+      "learning_goal": "Add ID generation, replicas, and cache to support read-heavy traffic.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 240}},
-          {"id": "cdn", "type": "CDN", "name": "CDN", "capacity": 50000, "base_latency": 5, "position": {"x": 200, "y": 240}},
-          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "capacity": 32000, "base_latency": 3, "position": {"x": 340, "y": 240}},
-          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "capacity": 32000, "base_latency": 8, "position": {"x": 480, "y": 240}},
-          {"id": "app-1", "type": "Server", "name": "App Server A", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 160}},
-          {"id": "app-2", "type": "Server", "name": "App Server B", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 320}},
-          {"id": "id-gen", "type": "IDGenerator", "name": "ID Generator", "capacity": 20000, "base_latency": 12, "position": {"x": 820, "y": 80}},
-          {"id": "cache", "type": "Cache", "name": "Redis Cache", "capacity": 32000, "base_latency": 5, "position": {"x": 820, "y": 240}},
-          {"id": "db-primary", "type": "Database", "name": "Primary DB", "capacity": 18000, "base_latency": 80, "position": {"x": 1000, "y": 160}},
-          {"id": "db-replica-1", "type": "Database", "name": "Read Replica A", "capacity": 20000, "base_latency": 70, "position": {"x": 1000, "y": 260}},
-          {"id": "db-replica-2", "type": "Database", "name": "Read Replica B", "capacity": 20000, "base_latency": 70, "position": {"x": 1000, "y": 360}},
-          {"id": "queue", "type": "Queue", "name": "Analytics Queue", "capacity": 25000, "base_latency": 10, "position": {"x": 1180, "y": 320}},
-          {"id": "worker", "type": "Worker", "name": "Analytics Worker", "capacity": 20000, "base_latency": 20, "position": {"x": 1340, "y": 320}},
-          {"id": "analytics-db", "type": "Database", "name": "Analytics DB", "capacity": 24000, "base_latency": 60, "position": {"x": 1500, "y": 320}}
+          {"id": "user", "type": "User", "description": "Creators and visitors shortening or expanding URLs.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches redirects close to users for low latency.", "capacity": 50000, "base_latency": 5, "position": {"x": 200, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "description": "Protects the service from abusive spikes.", "capacity": 32000, "base_latency": 3, "position": {"x": 340, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes traffic across URL services.", "capacity": 32000, "base_latency": 8, "position": {"x": 480, "y": 240}},
+          {"id": "app-1", "type": "Server", "name": "App Server A", "description": "Handles URL creation and redirect lookups.", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 160}},
+          {"id": "app-2", "type": "Server", "name": "App Server B", "description": "Secondary URL service for scale-out.", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 320}},
+          {"id": "id-gen", "type": "IDGenerator", "name": "ID Generator", "description": "Issues unique short codes for new URLs.", "capacity": 20000, "base_latency": 12, "position": {"x": 820, "y": 80}},
+          {"id": "cache", "type": "Cache", "name": "Redis Cache", "description": "Caches hot redirect mappings.", "capacity": 32000, "base_latency": 5, "position": {"x": 820, "y": 240}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "description": "Primary store for short code mappings.", "capacity": 18000, "base_latency": 80, "position": {"x": 1000, "y": 160}},
+          {"id": "db-replica-1", "type": "Database", "name": "Read Replica A", "description": "Read replica for redirect lookups.", "capacity": 20000, "base_latency": 70, "position": {"x": 1000, "y": 260}},
+          {"id": "db-replica-2", "type": "Database", "name": "Read Replica B", "description": "Read replica for redirect lookups.", "capacity": 20000, "base_latency": 70, "position": {"x": 1000, "y": 360}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "rate"},
+          {"source": "rate", "target": "lb"},
+          {"source": "lb", "target": "app-1"},
+          {"source": "lb", "target": "app-2"},
+          {"source": "app-1", "target": "id-gen"},
+          {"source": "app-2", "target": "id-gen"},
+          {"source": "app-1", "target": "cache"},
+          {"source": "app-2", "target": "cache"},
+          {"source": "cache", "target": "db-primary"},
+          {"source": "cache", "target": "db-replica-1"},
+          {"source": "cache", "target": "db-replica-2"}
+        ]
+      }
+    },
+    {
+      "stage": 4,
+      "title": "Async Optimization",
+      "learning_goal": "Add async analytics pipeline to protect the redirect path.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Creators and visitors shortening or expanding URLs.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches redirects close to users for low latency.", "capacity": 52000, "base_latency": 5, "position": {"x": 200, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "description": "Protects the service from abusive spikes.", "capacity": 34000, "base_latency": 3, "position": {"x": 340, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes traffic across URL services.", "capacity": 34000, "base_latency": 8, "position": {"x": 480, "y": 240}},
+          {"id": "app-1", "type": "Server", "name": "App Server A", "description": "Handles URL creation and redirect lookups.", "capacity": 25000, "base_latency": 18, "position": {"x": 640, "y": 160}},
+          {"id": "app-2", "type": "Server", "name": "App Server B", "description": "Secondary URL service for scale-out.", "capacity": 23000, "base_latency": 18, "position": {"x": 640, "y": 320}},
+          {"id": "id-gen", "type": "IDGenerator", "name": "ID Generator", "description": "Issues unique short codes for new URLs.", "capacity": 22000, "base_latency": 12, "position": {"x": 820, "y": 80}},
+          {"id": "cache", "type": "Cache", "name": "Redis Cache", "description": "Caches hot redirect mappings.", "capacity": 34000, "base_latency": 5, "position": {"x": 820, "y": 240}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "description": "Primary store for short code mappings.", "capacity": 19000, "base_latency": 80, "position": {"x": 1000, "y": 160}},
+          {"id": "db-replica-1", "type": "Database", "name": "Read Replica A", "description": "Read replica for redirect lookups.", "capacity": 21000, "base_latency": 70, "position": {"x": 1000, "y": 260}},
+          {"id": "db-replica-2", "type": "Database", "name": "Read Replica B", "description": "Read replica for redirect lookups.", "capacity": 21000, "base_latency": 70, "position": {"x": 1000, "y": 360}},
+          {"id": "queue", "type": "Queue", "name": "Analytics Queue", "description": "Buffers click events for async processing.", "capacity": 26000, "base_latency": 10, "position": {"x": 1180, "y": 320}},
+          {"id": "worker", "type": "Worker", "name": "Analytics Worker", "description": "Processes analytics events from the queue.", "capacity": 21000, "base_latency": 20, "position": {"x": 1340, "y": 320}},
+          {"id": "analytics-db", "type": "Database", "name": "Analytics DB", "description": "Stores aggregated click analytics.", "capacity": 24000, "base_latency": 60, "position": {"x": 1500, "y": 320}}
         ],
         "edges": [
           {"source": "user", "target": "cdn"},
@@ -90,26 +130,137 @@
           {"source": "worker", "target": "analytics-db"}
         ]
       }
+    },
+    {
+      "stage": 5,
+      "title": "Production Hardening",
+      "learning_goal": "Add sharding, monitoring, and failover-ready storage.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Creators and visitors shortening or expanding URLs.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches redirects close to users for low latency.", "capacity": 54000, "base_latency": 5, "position": {"x": 200, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "description": "Protects the service from abusive spikes.", "capacity": 36000, "base_latency": 3, "position": {"x": 340, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes traffic across URL services.", "capacity": 36000, "base_latency": 8, "position": {"x": 480, "y": 240}},
+          {"id": "app-1", "type": "Server", "name": "App Server A", "description": "Handles URL creation and redirect lookups.", "capacity": 24000, "base_latency": 18, "position": {"x": 640, "y": 160}},
+          {"id": "app-2", "type": "Server", "name": "App Server B", "description": "Secondary URL service for scale-out.", "capacity": 22000, "base_latency": 19, "position": {"x": 640, "y": 320}},
+          {"id": "id-gen", "type": "IDGenerator", "name": "ID Generator", "description": "Issues unique short codes for new URLs.", "capacity": 22000, "base_latency": 12, "position": {"x": 820, "y": 80}},
+          {"id": "cache", "type": "Cache", "name": "Redis Cache", "description": "Caches hot redirect mappings.", "capacity": 36000, "base_latency": 5, "position": {"x": 820, "y": 240}},
+          {"id": "db-shard-a", "type": "Database", "name": "Shard A", "description": "Primary shard for short code mappings.", "capacity": 18000, "base_latency": 82, "position": {"x": 1020, "y": 180}},
+          {"id": "db-shard-b", "type": "Database", "name": "Shard B", "description": "Secondary shard for load distribution.", "capacity": 17000, "base_latency": 86, "position": {"x": 1020, "y": 320}},
+          {"id": "queue", "type": "Queue", "name": "Analytics Queue", "description": "Buffers click events for async processing.", "capacity": 26000, "base_latency": 10, "position": {"x": 1200, "y": 320}},
+          {"id": "worker", "type": "Worker", "name": "Analytics Worker", "description": "Processes analytics events from the queue.", "capacity": 21000, "base_latency": 20, "position": {"x": 1360, "y": 320}},
+          {"id": "analytics-db", "type": "Database", "name": "Analytics DB", "description": "Stores aggregated click analytics.", "capacity": 24000, "base_latency": 60, "position": {"x": 1520, "y": 320}},
+          {"id": "monitor", "type": "NotificationService", "name": "Monitoring Alerts", "description": "Sends alerts on latency or error spikes.", "capacity": 8000, "base_latency": 10, "position": {"x": 980, "y": 60}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "rate"},
+          {"source": "rate", "target": "lb"},
+          {"source": "lb", "target": "app-1"},
+          {"source": "lb", "target": "app-2"},
+          {"source": "app-1", "target": "id-gen"},
+          {"source": "app-2", "target": "id-gen"},
+          {"source": "app-1", "target": "cache"},
+          {"source": "app-2", "target": "cache"},
+          {"source": "cache", "target": "db-shard-a"},
+          {"source": "cache", "target": "db-shard-b"},
+          {"source": "app-1", "target": "queue"},
+          {"source": "app-2", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "analytics-db"},
+          {"source": "app-1", "target": "monitor"}
+        ]
+      }
     }
   ],
   "faqs": [
     {
+      "id": "shortener-faq-001",
       "question": "How do you handle hot keys in a URL shortener?",
       "answer": "Introduce key salting for popular URLs, cache hot entries aggressively, and shard by hashed key prefix.",
-      "topics": ["hot key", "sharding", "cache"]
+      "difficulty": "Intermediate",
+      "topics": ["hot-keys", "sharding", "cache-invalidation"],
+      "stage": null,
+      "related_components": ["Cache", "Database"],
+      "follow_up_questions": [
+        "How do you detect hot keys early?",
+        "What metrics show cache hot-spotting?"
+      ]
     },
     {
+      "id": "shortener-faq-002",
       "question": "Which consistency model is acceptable for reads?",
       "answer": "Eventual consistency for replicas is acceptable with primary writes and fallback when lag increases.",
-      "topics": ["replication lag", "CAP theorem", "consistency"]
+      "difficulty": "Advanced",
+      "topics": ["replication", "cap-theorem", "eventual-consistency"],
+      "stage": null,
+      "related_components": ["Database"],
+      "follow_up_questions": [
+        "When would you force reads to the primary?",
+        "How do you surface replica lag to the app?"
+      ]
     },
     {
+      "id": "shortener-faq-003",
       "question": "How do you prevent thundering herd on cache miss?",
       "answer": "Use request coalescing, soft TTLs, and background refresh to avoid stampedes.",
-      "topics": ["thundering herd", "cache invalidation"]
+      "difficulty": "Intermediate",
+      "topics": ["cache-invalidation", "backpressure"],
+      "stage": null,
+      "related_components": ["Cache"],
+      "follow_up_questions": [
+        "What happens if the cache layer fails?",
+        "How do you repopulate cache safely?"
+      ]
+    },
+    {
+      "id": "shortener-stage-1-001",
+      "question": "Why keep the MVP architecture simple?",
+      "answer": "A single service and database reduce complexity and help validate core functionality quickly.",
+      "difficulty": "Beginner",
+      "topics": ["async-vs-sync"],
+      "stage": 1,
+      "related_components": ["Server", "Database"],
+      "follow_up_questions": [
+        "When would you introduce a cache for the first time?"
+      ]
+    },
+    {
+      "id": "shortener-stage-2-001",
+      "question": "How does rate limiting protect the shortener?",
+      "answer": "Rate limiting prevents abusive spikes and preserves capacity for legitimate traffic.",
+      "difficulty": "Intermediate",
+      "topics": ["backpressure"],
+      "stage": 2,
+      "related_components": ["RateLimiter"],
+      "follow_up_questions": [
+        "What signals help tune rate limiter thresholds?"
+      ]
+    },
+    {
+      "id": "shortener-stage-3-001",
+      "question": "Why move analytics to an async queue?",
+      "answer": "Async analytics decouple heavy writes from the request path and keep redirect latency low.",
+      "difficulty": "Intermediate",
+      "topics": ["async-vs-sync", "backpressure"],
+      "stage": 3,
+      "related_components": ["Queue", "Worker"],
+      "follow_up_questions": [
+        "How would you handle failed analytics events?"
+      ]
     }
   ],
+  "concepts": [
+    "Rate limiting",
+    "Caching strategies",
+    "Read replicas",
+    "Async analytics"
+  ],
   "design_notes": {
+    "primary_scaling_strategy": "Cache-heavy read scaling with async analytics pipeline.",
+    "consistency_model": "Eventual consistency on replicas; strong consistency on primary writes.",
+    "partitioning_strategy": "Shard by URL hash prefix once primary saturates.",
+    "failure_handling": "Graceful fallback to primary and cache warm-up on replica loss.",
     "read_ratio": "90%",
     "write_ratio": "10%",
     "id_generation": "Base62 + Snowflake hybrid",

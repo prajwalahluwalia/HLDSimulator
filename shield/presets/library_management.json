@@ -1,7 +1,9 @@
 {
+  "id": "library_management",
   "name": "Library Management",
   "description": "Library system with search indexing, inventory management, and notifications.",
-  "traffic": {
+  "difficulty": "Beginner",
+  "traffic_profile": {
     "users": 1500,
     "requests_per_user": 3
   },
@@ -9,12 +11,13 @@
     {
       "stage": 1,
       "title": "Catalog MVP",
+      "learning_goal": "Build a simple catalog service backed by a database.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 8000, "base_latency": 10, "position": {"x": 240, "y": 220}},
-          {"id": "app", "type": "Server", "name": "Library App", "capacity": 6000, "base_latency": 18, "position": {"x": 420, "y": 220}},
-          {"id": "db", "type": "Database", "name": "Catalog DB", "capacity": 6000, "base_latency": 60, "position": {"x": 620, "y": 220}}
+          {"id": "user", "type": "User", "description": "Patrons browsing the library catalog.", "position": {"x": 80, "y": 220}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "description": "Routes catalog requests and handles auth.", "capacity": 8000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "app", "type": "Server", "name": "Library App", "description": "Serves catalog searches and availability.", "capacity": 6000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "db", "type": "Database", "name": "Catalog DB", "description": "Stores catalog entries and inventory.", "capacity": 6000, "base_latency": 60, "position": {"x": 620, "y": 220}}
         ],
         "edges": [
           {"source": "user", "target": "api"},
@@ -26,14 +29,15 @@
     {
       "stage": 2,
       "title": "Add Cache + Search",
+      "learning_goal": "Add caching and search indexing for faster discovery.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 9000, "base_latency": 10, "position": {"x": 240, "y": 220}},
-          {"id": "app", "type": "Server", "name": "Library App", "capacity": 7000, "base_latency": 18, "position": {"x": 420, "y": 220}},
-          {"id": "cache", "type": "Cache", "name": "Catalog Cache", "capacity": 9000, "base_latency": 5, "position": {"x": 600, "y": 160}},
-          {"id": "search", "type": "SearchIndex", "name": "Search Index", "capacity": 7000, "base_latency": 12, "position": {"x": 600, "y": 280}},
-          {"id": "db", "type": "Database", "name": "Catalog DB", "capacity": 7000, "base_latency": 60, "position": {"x": 800, "y": 220}}
+          {"id": "user", "type": "User", "description": "Patrons browsing the library catalog.", "position": {"x": 80, "y": 220}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "description": "Routes catalog requests and handles auth.", "capacity": 9000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "app", "type": "Server", "name": "Library App", "description": "Serves catalog searches and availability.", "capacity": 7000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "cache", "type": "Cache", "name": "Catalog Cache", "description": "Caches popular catalog lookups.", "capacity": 9000, "base_latency": 5, "position": {"x": 600, "y": 160}},
+          {"id": "search", "type": "SearchIndex", "name": "Search Index", "description": "Indexes titles and authors for fast search.", "capacity": 7000, "base_latency": 12, "position": {"x": 600, "y": 280}},
+          {"id": "db", "type": "Database", "name": "Catalog DB", "description": "Stores catalog entries and inventory.", "capacity": 7000, "base_latency": 60, "position": {"x": 800, "y": 220}}
         ],
         "edges": [
           {"source": "user", "target": "api"},
@@ -47,17 +51,18 @@
     {
       "stage": 3,
       "title": "Inventory + Notifications",
+      "learning_goal": "Introduce inventory management and async notification delivery.",
       "graph": {
         "nodes": [
-          {"id": "user", "type": "User", "position": {"x": 80, "y": 220}},
-          {"id": "api", "type": "APIGateway", "name": "API Gateway", "capacity": 10000, "base_latency": 10, "position": {"x": 240, "y": 220}},
-          {"id": "app", "type": "InventoryService", "name": "Inventory Service", "capacity": 8000, "base_latency": 18, "position": {"x": 420, "y": 220}},
-          {"id": "cache", "type": "Cache", "name": "Catalog Cache", "capacity": 10000, "base_latency": 5, "position": {"x": 600, "y": 140}},
-          {"id": "search", "type": "SearchIndex", "name": "Search Index", "capacity": 8000, "base_latency": 12, "position": {"x": 600, "y": 300}},
-          {"id": "queue", "type": "Queue", "name": "Notification Queue", "capacity": 8000, "base_latency": 12, "position": {"x": 780, "y": 340}},
-          {"id": "worker", "type": "Worker", "name": "Notification Worker", "capacity": 7000, "base_latency": 16, "position": {"x": 940, "y": 340}},
-          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "capacity": 6000, "base_latency": 15, "position": {"x": 940, "y": 140}},
-          {"id": "db", "type": "Database", "name": "Catalog DB", "capacity": 8000, "base_latency": 60, "position": {"x": 960, "y": 220}}
+          {"id": "user", "type": "User", "description": "Patrons browsing the library catalog.", "position": {"x": 80, "y": 220}},
+          {"id": "api", "type": "APIGateway", "name": "API Gateway", "description": "Routes catalog requests and handles auth.", "capacity": 10000, "base_latency": 10, "position": {"x": 240, "y": 220}},
+          {"id": "app", "type": "InventoryService", "name": "Inventory Service", "description": "Manages checkouts, returns, and holds.", "capacity": 8000, "base_latency": 18, "position": {"x": 420, "y": 220}},
+          {"id": "cache", "type": "Cache", "name": "Catalog Cache", "description": "Caches popular catalog lookups.", "capacity": 10000, "base_latency": 5, "position": {"x": 600, "y": 140}},
+          {"id": "search", "type": "SearchIndex", "name": "Search Index", "description": "Indexes titles and authors for fast search.", "capacity": 8000, "base_latency": 12, "position": {"x": 600, "y": 300}},
+          {"id": "queue", "type": "Queue", "name": "Notification Queue", "description": "Buffers overdue and hold notifications.", "capacity": 8000, "base_latency": 12, "position": {"x": 780, "y": 340}},
+          {"id": "worker", "type": "Worker", "name": "Notification Worker", "description": "Sends queued notifications to patrons.", "capacity": 7000, "base_latency": 16, "position": {"x": 940, "y": 340}},
+          {"id": "notify", "type": "NotificationService", "name": "Notification Service", "description": "Delivers reminders via email/SMS.", "capacity": 6000, "base_latency": 15, "position": {"x": 940, "y": 140}},
+          {"id": "db", "type": "Database", "name": "Catalog DB", "description": "Stores catalog entries and inventory.", "capacity": 8000, "base_latency": 60, "position": {"x": 960, "y": 220}}
         ],
         "edges": [
           {"source": "user", "target": "api"},
@@ -75,15 +80,71 @@
   ],
   "faqs": [
     {
+      "id": "library-faq-001",
       "question": "How do you index books for fast search?",
       "answer": "Use a dedicated search index with inverted indexes and async sync from the primary database.",
-      "topics": ["indexing", "search"]
+      "difficulty": "Beginner",
+      "topics": ["indexing", "async-vs-sync"],
+      "stage": null,
+      "related_components": ["SearchIndex", "Database"],
+      "follow_up_questions": [
+        "How often should the search index refresh?"
+      ]
     },
     {
+      "id": "library-faq-002",
       "question": "How do you handle cache invalidation for availability?",
       "answer": "Invalidate cache on checkout and return events and use short TTLs for availability data.",
-      "topics": ["cache invalidation", "consistency"]
+      "difficulty": "Intermediate",
+      "topics": ["cache-invalidation", "eventual-consistency"],
+      "stage": null,
+      "related_components": ["Cache", "Database"],
+      "follow_up_questions": [
+        "Which availability reads should bypass cache?"
+      ]
+    },
+    {
+      "id": "library-stage-1-001",
+      "question": "Why keep the MVP catalog in a single database?",
+      "answer": "A single database simplifies operations while validating core user workflows.",
+      "difficulty": "Beginner",
+      "topics": ["cap-theorem"],
+      "stage": 1,
+      "related_components": ["Database"],
+      "follow_up_questions": [
+        "When would you introduce read replicas?"
+      ]
+    },
+    {
+      "id": "library-stage-2-001",
+      "question": "How does the search index stay consistent with the DB?",
+      "answer": "Use async pipelines to sync changes and accept eventual consistency for search results.",
+      "difficulty": "Intermediate",
+      "topics": ["eventual-consistency", "async-vs-sync"],
+      "stage": 2,
+      "related_components": ["SearchIndex", "Database"],
+      "follow_up_questions": [
+        "What happens if the sync pipeline is delayed?"
+      ]
+    },
+    {
+      "id": "library-stage-3-001",
+      "question": "Why add a notification queue for overdue reminders?",
+      "answer": "Queues smooth bursts and let workers retry reminders without blocking core traffic.",
+      "difficulty": "Intermediate",
+      "topics": ["backpressure", "async-vs-sync"],
+      "stage": 3,
+      "related_components": ["Queue", "Worker", "NotificationService"],
+      "follow_up_questions": [
+        "How do you handle duplicate reminder sends?"
+      ]
     }
+  ],
+  "concepts": [
+    "Search indexing",
+    "Caching",
+    "Async notifications",
+    "Inventory tracking"
   ],
   "design_notes": {
     "search": "Elasticsearch-style index",

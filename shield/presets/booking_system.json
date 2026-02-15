@@ -1,0 +1,299 @@
+{
+  "id": "booking_system",
+  "name": "Booking System",
+  "description": "Ticket booking platform with inventory locking and payment processing.",
+  "difficulty": "Intermediate",
+  "traffic_profile": {
+    "users": 2000,
+    "requests_per_user": 4,
+    "read_write_ratio": "35:65"
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Basic MVP",
+      "learning_goal": "Establish a minimal booking flow with a single app tier and database.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Customers browsing and booking seats.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches static assets and reduces edge latency.", "capacity": 18000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "app", "type": "Server", "name": "App Server", "description": "Handles booking requests and seat availability logic.", "capacity": 9000, "base_latency": 28, "position": {"x": 420, "y": 240}},
+          {"id": "db", "type": "Database", "name": "Booking DB", "description": "Stores bookings, inventory, and user data.", "capacity": 7000, "base_latency": 85, "position": {"x": 620, "y": 240}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "app"},
+          {"source": "app", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 2,
+      "title": "Horizontal Scaling",
+      "learning_goal": "Introduce a load balancer and multiple app servers for scale.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Customers browsing and booking seats.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches static assets and reduces edge latency.", "capacity": 22000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes booking traffic across app servers.", "capacity": 16000, "base_latency": 10, "position": {"x": 360, "y": 240}},
+          {"id": "app-a", "type": "Server", "name": "App Server A", "description": "Primary booking service handling seat availability.", "capacity": 11000, "base_latency": 24, "position": {"x": 520, "y": 170}},
+          {"id": "app-b", "type": "Server", "name": "App Server B", "description": "Secondary booking service for scale-out traffic.", "capacity": 9500, "base_latency": 26, "position": {"x": 520, "y": 320}},
+          {"id": "db", "type": "Database", "name": "Booking DB", "description": "Stores bookings, inventory, and user data.", "capacity": 9000, "base_latency": 80, "position": {"x": 700, "y": 240}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app-a"},
+          {"source": "lb", "target": "app-b"},
+          {"source": "app-a", "target": "db"},
+          {"source": "app-b", "target": "db"}
+        ]
+      }
+    },
+    {
+      "stage": 3,
+      "title": "Read Scaling",
+      "learning_goal": "Introduce caching and read replicas to reduce load on the primary database.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Customers browsing and booking seats.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches static assets and reduces edge latency.", "capacity": 26000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes booking traffic across app servers.", "capacity": 19000, "base_latency": 10, "position": {"x": 360, "y": 240}},
+          {"id": "app-a", "type": "Server", "name": "App Server A", "description": "Primary booking service for writes and holds.", "capacity": 14000, "base_latency": 22, "position": {"x": 520, "y": 170}},
+          {"id": "app-b", "type": "Server", "name": "App Server B", "description": "Read-optimized booking service for availability checks.", "capacity": 12000, "base_latency": 24, "position": {"x": 520, "y": 320}},
+          {"id": "cache", "type": "Cache", "name": "Seat Cache", "description": "Caches seat availability for low-latency reads.", "capacity": 22000, "base_latency": 5, "position": {"x": 700, "y": 140}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "description": "Primary write store for bookings.", "capacity": 12000, "base_latency": 75, "position": {"x": 880, "y": 220}},
+          {"id": "db-replica", "type": "Database", "name": "Read Replica", "description": "Replica to offload read traffic.", "capacity": 15000, "base_latency": 70, "position": {"x": 880, "y": 340}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app-a"},
+          {"source": "lb", "target": "app-b"},
+          {"source": "app-a", "target": "cache"},
+          {"source": "app-b", "target": "cache"},
+          {"source": "cache", "target": "db-primary"},
+          {"source": "cache", "target": "db-replica"}
+        ]
+      }
+    },
+    {
+      "stage": 4,
+      "title": "Async Optimization",
+      "learning_goal": "Add async confirmation to smooth bursts and protect downstream services.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Customers browsing and booking seats.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches static assets and reduces edge latency.", "capacity": 28000, "base_latency": 6, "position": {"x": 220, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes booking traffic across app servers.", "capacity": 20000, "base_latency": 10, "position": {"x": 360, "y": 240}},
+          {"id": "app-a", "type": "Server", "name": "App Server A", "description": "Primary booking service for holds and confirmations.", "capacity": 15000, "base_latency": 22, "position": {"x": 520, "y": 170}},
+          {"id": "app-b", "type": "Server", "name": "App Server B", "description": "Secondary booking service for scale-out traffic.", "capacity": 13000, "base_latency": 24, "position": {"x": 520, "y": 320}},
+          {"id": "cache", "type": "Cache", "name": "Seat Cache", "description": "Caches seat availability to reduce DB reads.", "capacity": 24000, "base_latency": 5, "position": {"x": 700, "y": 140}},
+          {"id": "payment", "type": "PaymentGateway", "name": "Payment Gateway", "description": "Handles card authorization and payment capture.", "capacity": 11000, "base_latency": 20, "position": {"x": 700, "y": 360}},
+          {"id": "queue", "type": "Queue", "name": "Booking Queue", "description": "Buffers booking confirmations for async processing.", "capacity": 17000, "base_latency": 12, "position": {"x": 880, "y": 360}},
+          {"id": "worker", "type": "Worker", "name": "Booking Worker", "description": "Processes queued bookings and confirms seats.", "capacity": 13000, "base_latency": 18, "position": {"x": 1040, "y": 360}},
+          {"id": "db-primary", "type": "Database", "name": "Primary DB", "description": "Primary write store for bookings.", "capacity": 13000, "base_latency": 78, "position": {"x": 900, "y": 220}},
+          {"id": "db-replica", "type": "Database", "name": "Read Replica", "description": "Replica to offload read traffic.", "capacity": 16000, "base_latency": 72, "position": {"x": 900, "y": 80}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "lb"},
+          {"source": "lb", "target": "app-a"},
+          {"source": "lb", "target": "app-b"},
+          {"source": "app-a", "target": "cache"},
+          {"source": "app-b", "target": "cache"},
+          {"source": "cache", "target": "db-primary"},
+          {"source": "cache", "target": "db-replica"},
+          {"source": "app-a", "target": "payment"},
+          {"source": "app-b", "target": "payment"},
+          {"source": "payment", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "db-primary"}
+        ]
+      }
+    },
+    {
+      "stage": 5,
+      "title": "Production Hardening",
+      "learning_goal": "Add rate limiting, locking, sharding, and monitoring for resilience.",
+      "graph": {
+        "nodes": [
+          {"id": "user", "type": "User", "description": "Customers browsing and booking seats.", "position": {"x": 80, "y": 240}},
+          {"id": "cdn", "type": "CDN", "name": "CDN", "description": "Caches static assets and reduces edge latency.", "capacity": 32000, "base_latency": 6, "position": {"x": 200, "y": 240}},
+          {"id": "rate", "type": "RateLimiter", "name": "Rate Limiter", "description": "Throttles abusive bursts to protect inventory.", "capacity": 24000, "base_latency": 4, "position": {"x": 320, "y": 240}},
+          {"id": "lb", "type": "LoadBalancer", "name": "Load Balancer", "description": "Distributes booking traffic across app servers.", "capacity": 22000, "base_latency": 10, "position": {"x": 440, "y": 240}},
+          {"id": "app-a", "type": "Server", "name": "App Server A", "description": "Primary booking service for holds and confirmations.", "capacity": 15000, "base_latency": 22, "position": {"x": 600, "y": 160}},
+          {"id": "app-b", "type": "Server", "name": "App Server B", "description": "Secondary booking service for scale-out traffic.", "capacity": 12000, "base_latency": 24, "position": {"x": 600, "y": 320}},
+          {"id": "cache", "type": "Cache", "name": "Seat Cache", "description": "Caches seat availability to reduce DB reads.", "capacity": 26000, "base_latency": 5, "position": {"x": 780, "y": 140}},
+          {"id": "locking", "type": "InventoryLocking", "name": "Inventory Locking", "description": "Prevents double booking with short-lived locks.", "capacity": 12000, "base_latency": 12, "position": {"x": 780, "y": 260}},
+          {"id": "payment", "type": "PaymentGateway", "name": "Payment Gateway", "description": "Handles authorization and capture of payments.", "capacity": 12000, "base_latency": 20, "position": {"x": 780, "y": 400}},
+          {"id": "queue", "type": "Queue", "name": "Booking Queue", "description": "Buffers booking confirmations for async processing.", "capacity": 18000, "base_latency": 12, "position": {"x": 960, "y": 400}},
+          {"id": "worker", "type": "Worker", "name": "Booking Worker", "description": "Processes queued bookings and confirmations.", "capacity": 14000, "base_latency": 18, "position": {"x": 1120, "y": 400}},
+          {"id": "db-shard-a", "type": "Database", "name": "Shard A", "description": "Shard for high-volume venues or regions.", "capacity": 13000, "base_latency": 82, "position": {"x": 980, "y": 180}},
+          {"id": "db-shard-b", "type": "Database", "name": "Shard B", "description": "Secondary shard for load distribution.", "capacity": 11000, "base_latency": 88, "position": {"x": 980, "y": 320}},
+          {"id": "monitor", "type": "NotificationService", "name": "Monitoring Alerts", "description": "Sends alerts when booking SLAs degrade.", "capacity": 8000, "base_latency": 10, "position": {"x": 940, "y": 60}}
+        ],
+        "edges": [
+          {"source": "user", "target": "cdn"},
+          {"source": "cdn", "target": "rate"},
+          {"source": "rate", "target": "lb"},
+          {"source": "lb", "target": "app-a"},
+          {"source": "lb", "target": "app-b"},
+          {"source": "app-a", "target": "cache"},
+          {"source": "app-b", "target": "cache"},
+          {"source": "cache", "target": "db-shard-a"},
+          {"source": "cache", "target": "db-shard-b"},
+          {"source": "app-a", "target": "locking"},
+          {"source": "app-b", "target": "locking"},
+          {"source": "locking", "target": "db-shard-a"},
+          {"source": "app-a", "target": "payment"},
+          {"source": "app-b", "target": "payment"},
+          {"source": "payment", "target": "queue"},
+          {"source": "queue", "target": "worker"},
+          {"source": "worker", "target": "db-shard-a"},
+          {"source": "app-a", "target": "monitor"}
+        ]
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "id": "booking-faq-001",
+      "question": "How do you prevent double booking during peak traffic?",
+      "answer": "Use inventory locking with a short TTL and idempotent booking writes to ensure only one transaction commits per seat.",
+      "difficulty": "Intermediate",
+      "topics": ["concurrency", "distributed-locks"],
+      "stage": null,
+      "related_components": ["InventoryLocking", "Database"],
+      "follow_up_questions": [
+        "How would you handle deadlocks during inventory locking?",
+        "What happens when lock TTL expires mid-transaction?"
+      ]
+    },
+    {
+      "id": "booking-faq-002",
+      "question": "How do you handle cache invalidation for seat availability?",
+      "answer": "Invalidate or update cache entries on confirmed bookings and use write-through for reads to avoid stale availability.",
+      "difficulty": "Intermediate",
+      "topics": ["cache-invalidation", "eventual-consistency"],
+      "stage": null,
+      "related_components": ["Cache", "Database"],
+      "follow_up_questions": [
+        "What cache strategy prevents stale reads during bursts?",
+        "How would you handle cache warm-up after a failover?"
+      ]
+    },
+    {
+      "id": "booking-faq-003",
+      "question": "How do you mitigate replication lag issues?",
+      "answer": "Route critical reads to the primary and expose lag metrics to fall back when replicas fall behind.",
+      "difficulty": "Advanced",
+      "topics": ["replication", "eventual-consistency"],
+      "stage": null,
+      "related_components": ["Database"],
+      "follow_up_questions": [
+        "How would you detect replica staleness?",
+        "When would you promote a replica to primary?"
+      ]
+    },
+    {
+      "id": "booking-faq-004",
+      "question": "How do you handle payment retries safely?",
+      "answer": "Use idempotent payment tokens and retry queues so duplicate charges are prevented.",
+      "difficulty": "Advanced",
+      "topics": ["async-vs-sync", "concurrency"],
+      "stage": null,
+      "related_components": ["PaymentGateway", "Queue"],
+      "follow_up_questions": [
+        "Where do you store idempotency keys?"
+      ]
+    },
+    {
+      "id": "booking-faq-005",
+      "question": "When would you shard the booking database?",
+      "answer": "Shard when single-writer throughput becomes a bottleneck or when regional latency requirements demand partitioning.",
+      "difficulty": "Advanced",
+      "topics": ["sharding", "replication"],
+      "stage": null,
+      "related_components": ["Database"],
+      "follow_up_questions": [
+        "How do you route users to the correct shard?"
+      ]
+    },
+    {
+      "id": "booking-stage-1-001",
+      "question": "What is the risk of a single app server in the MVP stage?",
+      "answer": "A single app server is a single point of failure and limits horizontal scaling during spikes.",
+      "difficulty": "Beginner",
+      "topics": ["backpressure"],
+      "stage": 1,
+      "related_components": ["Server"],
+      "follow_up_questions": [
+        "How would you add redundancy without changing the API layer?"
+      ]
+    },
+    {
+      "id": "booking-stage-2-001",
+      "question": "Why introduce read replicas in the booking system?",
+      "answer": "Replicas offload read traffic from the primary so the write path stays responsive.",
+      "difficulty": "Intermediate",
+      "topics": ["replication", "eventual-consistency"],
+      "stage": 2,
+      "related_components": ["Database"],
+      "follow_up_questions": [
+        "Which reads must still hit the primary?"
+      ]
+    },
+    {
+      "id": "booking-stage-3-001",
+      "question": "What does the booking queue accomplish in production?",
+      "answer": "It buffers payment and confirmation work so spikes do not overwhelm downstream services.",
+      "difficulty": "Intermediate",
+      "topics": ["backpressure", "async-vs-sync"],
+      "stage": 3,
+      "related_components": ["Queue", "Worker"],
+      "follow_up_questions": [
+        "How do you retry failed booking tasks safely?"
+      ]
+    },
+    {
+      "id": "booking-stage-4-001",
+      "question": "Why move booking confirmations to async workers?",
+      "answer": "Async workers isolate slow payment confirmations and keep request latency stable during surges.",
+      "difficulty": "Intermediate",
+      "topics": ["async-vs-sync", "backpressure"],
+      "stage": 4,
+      "related_components": ["Queue", "Worker"],
+      "follow_up_questions": [
+        "How do you notify users of delayed confirmations?"
+      ]
+    },
+    {
+      "id": "booking-stage-5-001",
+      "question": "Why add a rate limiter in front of the booking flow?",
+      "answer": "Rate limiting protects inventory services from abusive spikes and preserves capacity for real users.",
+      "difficulty": "Intermediate",
+      "topics": ["backpressure"],
+      "stage": 5,
+      "related_components": ["RateLimiter"],
+      "follow_up_questions": [
+        "How do you tune rate limits for peak events?"
+      ]
+    }
+  ],
+  "concepts": [
+    "Inventory locking",
+    "Read replicas",
+    "Asynchronous processing",
+    "Cache invalidation"
+  ],
+  "design_notes": {
+    "primary_scaling_strategy": "Horizontal app scaling with cache + async confirmation.",
+    "consistency_model": "Eventual consistency for reads; strong consistency for booking writes.",
+    "partitioning_strategy": "Shard by event or venue once primary reaches saturation.",
+    "failure_handling": "Graceful degradation with queue backlogs and payment retries.",
+    "cache_hit_ratio": "0.7",
+    "writes": "Seat reservations are write-heavy during bursts",
+    "payments": "Async payment confirmation with retries"
+  }
+}
